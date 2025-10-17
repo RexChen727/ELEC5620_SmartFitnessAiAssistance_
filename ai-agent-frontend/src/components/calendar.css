@@ -574,3 +574,235 @@
         padding: 12px;
     }
 }
+
+/* 视图切换按钮 */
+.view-toggle {
+    display: flex;
+    gap: 8px;
+    margin-left: 20px;
+}
+
+.view-btn {
+    padding: 8px 16px;
+    border: 2px solid #e5e7eb;
+    background: #ffffff;
+    color: #6b7280;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.view-btn:hover {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.view-btn.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #ffffff;
+}
+
+/* 日视图样式 */
+.day-view {
+    flex: 1;
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.day-header {
+    padding: 20px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.day-header h3 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.day-timeline {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.time-slot {
+    display: flex;
+    border-bottom: 1px solid #f3f4f6;
+    min-height: 60px;
+}
+
+.time-label {
+    width: 80px;
+    padding: 12px;
+    background: #f8fafc;
+    border-right: 1px solid #e5e7eb;
+    font-size: 0.875rem;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.time-content {
+    flex: 1;
+    padding: 8px 12px;
+    position: relative;
+}
+
+.day-event {
+    background: #dbeafe;
+    border: 1px solid #3b82f6;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.day-event:hover {
+    background: #bfdbfe;
+}
+
+.event-time {
+    font-size: 0.75rem;
+    color: #1e40af;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.event-title {
+    font-size: 0.875rem;
+    color: #1e40af;
+    font-weight: 500;
+}
+
+/* 周视图样式 */
+.week-view {
+    flex: 1;
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.week-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f8fafc;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.week-day-header {
+    padding: 16px 8px;
+    text-align: center;
+    border-right: 1px solid #e5e7eb;
+}
+
+.week-day-header:last-child {
+    border-right: none;
+}
+
+.weekday-name {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.weekday-date {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.weekday-date.today {
+    background: #3b82f6;
+    color: #ffffff;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    min-height: 400px;
+}
+
+.week-day {
+    border-right: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 8px;
+    min-height: 100px;
+}
+
+.week-day:last-child {
+    border-right: none;
+}
+
+.week-events {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.week-event {
+    background: #dbeafe;
+    border: 1px solid #3b82f6;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.week-event:hover {
+    background: #bfdbfe;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .view-toggle {
+        margin-left: 0;
+        margin-top: 12px;
+        justify-content: center;
+    }
+    
+    .view-btn {
+        padding: 6px 12px;
+        font-size: 0.875rem;
+    }
+    
+    .day-timeline {
+        max-height: 400px;
+    }
+    
+    .time-label {
+        width: 60px;
+        padding: 8px;
+        font-size: 0.75rem;
+    }
+    
+    .week-header {
+        font-size: 0.75rem;
+    }
+    
+    .weekday-date {
+        font-size: 1rem;
+    }
+    
+    .week-day {
+        min-height: 80px;
+        padding: 4px;
+    }
+}

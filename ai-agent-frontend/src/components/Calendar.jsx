@@ -11,6 +11,7 @@ const Calendar = () => {
     const [showEventForm, setShowEventForm] = useState(false);
     const [showSubscribeModal, setShowSubscribeModal] = useState(false);
     const [subscribeUrl, setSubscribeUrl] = useState('');
+    const [viewMode, setViewMode] = useState('month'); // 'day', 'week', 'month'
     const [newEvent, setNewEvent] = useState({
         title: '',
         description: '',
@@ -114,6 +115,27 @@ const Calendar = () => {
         setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
     };
 
+    // 视图切换导航函数
+    const previousPeriod = () => {
+        if (viewMode === 'day') {
+            setCurrentDate(new Date(currentDate.getTime() - 24 * 60 * 60 * 1000));
+        } else if (viewMode === 'week') {
+            setCurrentDate(new Date(currentDate.getTime() - 7 * 24 * 60 * 60 * 1000));
+        } else {
+            setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+        }
+    };
+
+    const nextPeriod = () => {
+        if (viewMode === 'day') {
+            setCurrentDate(new Date(currentDate.getTime() + 24 * 60 * 60 * 1000));
+        } else if (viewMode === 'week') {
+            setCurrentDate(new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000));
+        } else {
+            setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
+        }
+    };
+
     // 选择日期
     const selectDate = (date) => {
         setSelectedDate(date);
@@ -207,6 +229,32 @@ const Calendar = () => {
         return date.toISOString().split('T')[0];
     };
 
+    // 获取周的开始日期（周一）
+    const getWeekStart = (date) => {
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1); // 调整到周一
+        return new Date(date.setDate(diff));
+    };
+
+    // 获取周的所有日期
+    const getWeekDates = (date) => {
+        const start = getWeekStart(new Date(date));
+        const week = [];
+        for (let i = 0; i < 7; i++) {
+            week.push(new Date(start.getTime() + i * 24 * 60 * 60 * 1000));
+        }
+        return week;
+    };
+
+    // 获取一天的小时数组
+    const getDayHours = () => {
+        const hours = [];
+        for (let i = 0; i < 24; i++) {
+            hours.push(i);
+        }
+        return hours;
+    };
+
     // 格式化时间显示
     const formatTime = (time) => {
         if (!time) return '';
@@ -297,19 +345,126 @@ const Calendar = () => {
                     </button>
                 </div>
                 <div className="calendar-navigation">
-                    <button onClick={previousMonth} className="nav-button">
+                    <button onClick={previousPeriod} className="nav-button">
                         <ChevronLeft size={20} />
                     </button>
-                    <h3 className="month-year">{getMonthName(currentDate)}</h3>
-                    <button onClick={nextMonth} className="nav-button">
+                    <h3 className="month-year">
+                        {viewMode === 'day' 
+                            ? currentDate.toLocaleDateString('zh-CN', { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric',
+                                weekday: 'long'
+                              })
+                            : viewMode === 'week'
+                            ? `第${Math.ceil(currentDate.getDate() / 7)}周 ${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月`
+                            : getMonthName(currentDate)
+                        }
+                    </h3>
+                    <button onClick={nextPeriod} className="nav-button">
                         <ChevronRight size={20} />
+                    </button>
+                </div>
+                
+                {/* 视图切换按钮 */}
+                <div className="view-toggle">
+                    <button 
+                        className={`view-btn ${viewMode === 'day' ? 'active' : ''}`}
+                        onClick={() => setViewMode('day')}
+                    >
+                        日
+                    </button>
+                    <button 
+                        className={`view-btn ${viewMode === 'week' ? 'active' : ''}`}
+                        onClick={() => setViewMode('week')}
+                    >
+                        周
+                    </button>
+                    <button 
+                        className={`view-btn ${viewMode === 'month' ? 'active' : ''}`}
+                        onClick={() => setViewMode('month')}
+                    >
+                        月
                     </button>
                 </div>
             </div>
 
             <div className="calendar-content">
-                {/* 日历网格 */}
-                <div className="calendar-grid">
+                {/* 根据视图模式渲染不同内容 */}
+                {viewMode === 'day' && (
+                    <div className="day-view">
+                        <div className="day-header">
+                            <h3>{currentDate.toLocaleDateString('zh-CN', { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric',
+                                weekday: 'long'
+                            })}</h3>
+                        </div>
+                        <div className="day-timeline">
+                            {getDayHours().map(hour => (
+                                <div key={hour} className="time-slot">
+                                    <div className="time-label">
+                                        {hour.toString().padStart(2, '0')}:00
+                                    </div>
+                                    <div className="time-content">
+                                        {getEventsForDate(currentDate).filter(event => {
+                                            const eventHour = new Date(event.startTime).getHours();
+                                            return eventHour === hour;
+                                        }).map(event => (
+                                            <div key={event.id} className="day-event">
+                                                <span className="event-time">
+                                                    {new Date(event.startTime).toLocaleTimeString('zh-CN', { 
+                                                        hour: '2-digit', 
+                                                        minute: '2-digit' 
+                                                    })}
+                                                </span>
+                                                <span className="event-title">{event.title}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {viewMode === 'week' && (
+                    <div className="week-view">
+                        <div className="week-header">
+                            {getWeekDates(currentDate).map((date, index) => (
+                                <div key={index} className="week-day-header">
+                                    <div className="weekday-name">{getWeekdayNames()[date.getDay()]}</div>
+                                    <div className={`weekday-date ${isToday(date) ? 'today' : ''}`}>
+                                        {date.getDate()}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="week-grid">
+                            {getWeekDates(currentDate).map((date, index) => (
+                                <div key={index} className="week-day">
+                                    <div className="week-events">
+                                        {getEventsForDate(date).map(event => (
+                                            <div key={event.id} className="week-event">
+                                                <span className="event-time">
+                                                    {new Date(event.startTime).toLocaleTimeString('zh-CN', { 
+                                                        hour: '2-digit', 
+                                                        minute: '2-digit' 
+                                                    })}
+                                                </span>
+                                                <span className="event-title">{event.title}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {viewMode === 'month' && (
+                    <div className="calendar-grid">
                     {/* 星期标题 */}
                     <div className="weekday-header">
                         {getWeekdayNames().map(day => (
@@ -343,6 +498,7 @@ const Calendar = () => {
                         })}
                     </div>
                 </div>
+                )}
 
                 {/* 侧边栏 - 选中日期的活动 */}
                 <div className="calendar-sidebar">
