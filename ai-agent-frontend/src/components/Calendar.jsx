@@ -43,14 +43,14 @@ const Calendar = () => {
         loadUserEvents();
     }, [user]);
 
-    // 获取月份名称
+    // Get month name
     const getMonthName = (date) => {
-        return date.toLocaleDateString('zh-CN', { month: 'long', year: 'numeric' });
+        return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     };
 
-    // 获取星期几的名称
+    // Get weekday names
     const getWeekdayNames = () => {
-        return ['日', '一', '二', '三', '四', '五', '六'];
+        return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     };
 
     // 获取月份的第一天
@@ -142,7 +142,7 @@ const Calendar = () => {
         setShowEventForm(false);
     };
 
-    // 添加活动
+    // Add Event
     const addEvent = async () => {
         console.log('addEvent called, user:', user);
         console.log('newEvent:', newEvent);
@@ -151,7 +151,7 @@ const Calendar = () => {
             try {
                 if (!user) {
                     console.log('No user found, showing login alert');
-                    alert('请先登录');
+                    alert('Please login first');
                     return;
                 }
 
@@ -189,19 +189,19 @@ const Calendar = () => {
                         location: ''
                     });
                     setShowEventForm(false);
-                    alert('活动添加成功！');
+                    alert('Event added successfully!');
                 } else {
                     const errorText = await response.text();
                     console.error('Add event failed:', response.status, errorText);
-                    alert('添加活动失败，请重试');
+                    alert('Failed to add event, please try again');
                 }
             } catch (error) {
                 console.error('Error adding event:', error);
-                alert('添加活动时出错');
+                alert('Error adding event');
             }
         } else {
             console.log('Missing required fields:', { title: newEvent.title, date: newEvent.date });
-            alert('请填写活动标题和日期');
+            alert('Please fill in event title and date');
         }
     };
 
@@ -214,13 +214,13 @@ const Calendar = () => {
 
             if (response.ok) {
                 setEvents(events.filter(event => event.id !== eventId));
-                alert('活动删除成功！');
+                alert('Event deleted successfully!');
             } else {
-                alert('删除活动失败，请重试');
+                alert('Failed to delete event, please try again');
             }
         } catch (error) {
             console.error('Error deleting event:', error);
-            alert('删除活动时出错');
+            alert('Error deleting event');
         }
     };
 
@@ -266,7 +266,7 @@ const Calendar = () => {
     const generateSubscribeUrl = async () => {
         try {
             if (!user) {
-                alert('请先登录');
+                alert('Please login first');
                 return;
             }
 
@@ -276,11 +276,11 @@ const Calendar = () => {
                 setSubscribeUrl(url);
                 setShowSubscribeModal(true);
             } else {
-                alert('生成订阅URL失败');
+                alert('Failed to generate subscription URL');
             }
         } catch (error) {
             console.error('Error generating subscribe URL:', error);
-            alert('生成订阅URL时出错');
+            alert('Error generating subscription URL');
         }
     };
 
@@ -288,7 +288,7 @@ const Calendar = () => {
     const exportCalendar = async () => {
         try {
             if (!user) {
-                alert('请先登录');
+                alert('Please login first');
                 return;
             }
 
@@ -304,11 +304,11 @@ const Calendar = () => {
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
             } else {
-                alert('导出日历失败');
+                alert('Failed to export calendar');
             }
         } catch (error) {
             console.error('Error exporting calendar:', error);
-            alert('导出日历时出错');
+            alert('Error exporting calendar');
         }
     };
 
@@ -316,10 +316,10 @@ const Calendar = () => {
     const copySubscribeUrl = async () => {
         try {
             await navigator.clipboard.writeText(subscribeUrl);
-            alert('订阅URL已复制到剪贴板！');
+            alert('Subscription URL copied to clipboard!');
         } catch (error) {
             console.error('Error copying to clipboard:', error);
-            alert('复制失败，请手动复制');
+            alert('Copy failed, please copy manually');
         }
     };
 
@@ -332,16 +332,16 @@ const Calendar = () => {
             <div className="calendar-header">
                 <div className="calendar-title">
                     <CalendarIcon size={24} />
-                    <h2>AI 智能日历</h2>
+                    <h2>Calendar</h2>
                 </div>
                 <div className="calendar-actions">
                     <button onClick={exportCalendar} className="action-button export-btn">
                         <Download size={16} />
-                        导出日历
+                        Export Calendar
                     </button>
                     <button onClick={generateSubscribeUrl} className="action-button subscribe-btn">
                         <Share2 size={16} />
-                        生成订阅URL
+                        Generate Subscribe URL
                     </button>
                 </div>
                 <div className="calendar-navigation">
@@ -357,7 +357,7 @@ const Calendar = () => {
                                 weekday: 'long'
                               })
                             : viewMode === 'week'
-                            ? `第${Math.ceil(currentDate.getDate() / 7)}周 ${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月`
+                            ? `Week ${Math.ceil(currentDate.getDate() / 7)}, ${currentDate.getFullYear()}`
                             : getMonthName(currentDate)
                         }
                     </h3>
@@ -372,19 +372,19 @@ const Calendar = () => {
                         className={`view-btn ${viewMode === 'day' ? 'active' : ''}`}
                         onClick={() => setViewMode('day')}
                     >
-                        日
+                        Day
                     </button>
                     <button 
                         className={`view-btn ${viewMode === 'week' ? 'active' : ''}`}
                         onClick={() => setViewMode('week')}
                     >
-                        周
+                        Week
                     </button>
                     <button 
                         className={`view-btn ${viewMode === 'month' ? 'active' : ''}`}
                         onClick={() => setViewMode('month')}
                     >
-                        月
+                        Month
                     </button>
                 </div>
             </div>
@@ -524,14 +524,14 @@ const Calendar = () => {
                             }}
                         >
                             <Plus size={16} />
-                            添加活动
+                            Add Event
                         </button>
                     </div>
 
                     {/* 活动列表 */}
                     <div className="events-list">
                         {selectedDateEvents.length === 0 ? (
-                            <p className="no-events">今天没有活动</p>
+                            <p className="no-events">No events today</p>
                         ) : (
                             selectedDateEvents.map(event => (
                                 <div key={event.id} className="event-item">
@@ -569,14 +569,14 @@ const Calendar = () => {
                 </div>
             </div>
 
-            {/* 添加活动表单 */}
+            {/* Add Event表单 */}
             {showEventForm && (
                 <div className="event-form-overlay">
                     <div className="event-form">
-                        <h3>添加新活动</h3>
+                        <h3>Add New Event</h3>
                         <form onSubmit={(e) => { e.preventDefault(); addEvent(); }}>
                             <div className="form-group">
-                                <label>活动标题 *</label>
+                                <label>Event Title *</label>
                                 <input
                                     type="text"
                                     value={newEvent.title}
@@ -585,7 +585,7 @@ const Calendar = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>日期 *</label>
+                                <label>Date *</label>
                                 <input
                                     type="date"
                                     value={newEvent.date || formatDateForInput(selectedDate)}
@@ -594,7 +594,7 @@ const Calendar = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>时间</label>
+                                <label>Time</label>
                                 <input
                                     type="time"
                                     value={newEvent.time}
@@ -602,7 +602,7 @@ const Calendar = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>地点</label>
+                                <label>Location</label>
                                 <input
                                     type="text"
                                     value={newEvent.location}
@@ -610,7 +610,7 @@ const Calendar = () => {
                                 />
                             </div>
                             <div className="form-group">
-                                <label>描述</label>
+                                <label>Description</label>
                                 <textarea
                                     value={newEvent.description}
                                     onChange={(e) => setNewEvent({...newEvent, description: e.target.value})}
@@ -619,10 +619,10 @@ const Calendar = () => {
                             </div>
                             <div className="form-actions">
                                 <button type="button" onClick={() => setShowEventForm(false)}>
-                                    取消
+                                    Cancel
                                 </button>
                                 <button type="submit" className="primary">
-                                    添加活动
+                                    Add Event
                                 </button>
                             </div>
                         </form>
@@ -634,10 +634,10 @@ const Calendar = () => {
             {showSubscribeModal && (
                 <div className="event-form-overlay">
                     <div className="event-form">
-                        <h3>📅 苹果日历订阅</h3>
+                        <h3>📅 Apple Calendar Subscription</h3>
                         <div className="subscribe-content">
                             <p className="subscribe-description">
-                                使用以下URL在苹果设备上订阅你的AI智能日历：
+                                Use the following URL to subscribe to your AI Smart Calendar on Apple devices:
                             </p>
                             <div className="url-container">
                                 <input
@@ -648,22 +648,22 @@ const Calendar = () => {
                                 />
                                 <button onClick={copySubscribeUrl} className="copy-btn">
                                     <Copy size={16} />
-                                    复制
+                                    Copy
                                 </button>
                             </div>
                             <div className="subscribe-instructions">
-                                <h4>📱 订阅步骤：</h4>
+                                <h4>📱 Subscription Steps:</h4>
                                 <ol>
-                                    <li>复制上面的URL</li>
-                                    <li>在Mac上：打开"日历"应用 → 文件 → 新建日历订阅 → 粘贴URL</li>
-                                    <li>在iPhone/iPad上：打开"日历"应用 → 日历 → 添加日历 → 添加订阅日历 → 粘贴URL</li>
-                                    <li>点击"订阅"完成设置</li>
+                                    <li>Copy the URL above</li>
+                                    <li>On Mac: Open "Calendar" app → File → New Calendar Subscription → Paste URL</li>
+                                    <li>On iPhone/iPad: Open "Calendar" app → Calendars → Add Calendar → Add Subscription Calendar → Paste URL</li>
+                                    <li>Click "Subscribe" to complete setup</li>
                                 </ol>
                             </div>
                         </div>
                         <div className="form-actions">
                             <button onClick={() => setShowSubscribeModal(false)} className="primary">
-                                关闭
+                                Close
                             </button>
                         </div>
                     </div>

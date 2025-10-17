@@ -14,8 +14,8 @@ const MainLayout = () => {
     };
 
     const navigationItems = [
-        { path: '/chat', icon: MessageSquare, label: 'AI 聊天', key: 'chat' },
-        { path: '/calendar', icon: Calendar, label: '智能日历', key: 'calendar' }
+        { path: '/chat', icon: MessageSquare, label: 'AI Chat', key: 'chat' },
+        { path: '/calendar', icon: Calendar, label: 'Calendar', key: 'calendar' }
     ];
 
     const isActive = (path) => {
@@ -65,14 +65,14 @@ const MainLayout = () => {
                         <div className="flex items-center space-x-4">
                             <div className="flex items-center space-x-2 text-sm text-gray-700">
                                 <User size={16} />
-                                <span>欢迎, {user.username}</span>
+                                <span>Welcome, {user.username}</span>
                             </div>
                             <button
                                 onClick={handleLogout}
                                 className="flex items-center space-x-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
                             >
                                 <LogOut size={16} />
-                                <span>退出</span>
+                                <span>Logout</span>
                             </button>
                         </div>
                     </div>
