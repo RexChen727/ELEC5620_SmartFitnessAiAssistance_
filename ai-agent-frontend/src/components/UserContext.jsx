@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const UserContext = createContext();
 
@@ -12,6 +12,19 @@ export const useUser = () => {
 
 export const UserProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+
+    // 从localStorage恢复用户状态
+    useEffect(() => {
+        const savedUser = localStorage.getItem('user');
+        if (savedUser) {
+            try {
+                setUser(JSON.parse(savedUser));
+            } catch (error) {
+                console.error('Error parsing saved user:', error);
+                localStorage.removeItem('user');
+            }
+        }
+    }, []);
 
     const login = (userData) => {
         setUser(userData);

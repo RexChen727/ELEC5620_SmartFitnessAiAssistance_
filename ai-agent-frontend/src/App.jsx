@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import Login from './components/Login';
 import Register from './components/Register';
 import ChatInterface from './components/ChatInterface';
+import Calendar from './components/Calendar';
+import MainLayout from './components/MainLayout';
 import { UserProvider } from './components/UserContext';
 
 function App() {
@@ -12,8 +14,11 @@ function App() {
                 <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
-                    <Route path="/chat" element={<ChatInterface />} />
-                    <Route path="/" element={<Navigate to="/login" replace />} />
+                    <Route path="/" element={<MainLayout />}>
+                        <Route index element={<Navigate to="/chat" replace />} />
+                        <Route path="chat" element={<ChatInterface />} />
+                        <Route path="calendar" element={<Calendar />} />
+                    </Route>
                 </Routes>
             </Router>
         </UserProvider>
