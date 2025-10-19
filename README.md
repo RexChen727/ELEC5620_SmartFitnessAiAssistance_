@@ -1,5 +1,5 @@
 # AI Agent Project
-
+aurora-test
 一个基于Spring Boot + React的AI智能助手项目框架，支持多种AI代理类型和对话管理。
 
 ## 🚀 技术栈
