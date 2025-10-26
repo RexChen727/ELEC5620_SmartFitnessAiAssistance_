@@ -9,11 +9,11 @@ const NavigationBar = () => {
     const location = useLocation();
     
     const navigationItems = [
-        { path: '/', icon: Home, label: 'Home', key: 'home' },
-        { path: '/chat', icon: Star, label: 'AI Fitness Plan', key: 'chat' },
-        { path: '/calendar', icon: Calendar, label: 'Weekly Plan', key: 'calendar' },
-        { path: '/fitness', icon: Dumbbell, label: 'Training Log', key: 'fitness' },
-        { path: '/reports', icon: BarChart3, label: 'Monthly Report', key: 'reports' },
+        { path: '/home', icon: Home, label: 'Home', key: 'home' },
+        { path: '/ai-plan', icon: Star, label: 'AI Fitness Plan', key: 'ai-plan' },
+        { path: '/weekly-plan', icon: Calendar, label: 'Weekly Plan', key: 'weekly-plan' },
+        { path: '/training-log', icon: Dumbbell, label: 'Training Log', key: 'training-log' },
+        { path: '/monthly-report', icon: BarChart3, label: 'Monthly Report', key: 'monthly-report' },
         { path: '/substitute', icon: Settings, label: 'Substitute', key: 'substitute' }
     ];
 
