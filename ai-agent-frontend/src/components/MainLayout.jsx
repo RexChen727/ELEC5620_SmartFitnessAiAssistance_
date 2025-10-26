@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { MessageSquare, Calendar, LogOut, User } from 'lucide-react';
+import { MessageSquare, Calendar, LogOut, User, Dumbbell } from 'lucide-react';
 import { useUser } from './UserContext';
 
 const MainLayout = () => {
@@ -15,6 +15,7 @@ const MainLayout = () => {
 
     const navigationItems = [
         { path: '/chat', icon: MessageSquare, label: 'AI Chat', key: 'chat' },
+        { path: '/fitness', icon: Dumbbell, label: 'Fitness Assistant', key: 'fitness' },
         { path: '/calendar', icon: Calendar, label: 'Calendar', key: 'calendar' }
     ];
 
@@ -22,8 +23,13 @@ const MainLayout = () => {
         return location.pathname === path;
     };
 
+    useEffect(() => {
+        if (!user) {
+            navigate('/login');
+        }
+    }, [user, navigate]);
+
     if (!user) {
-        navigate('/login');
         return null;
     }
 

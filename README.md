@@ -1,22 +1,24 @@
 # AI Agent Project
 
-一个基于Spring Boot + React的AI智能助手项目框架，支持多种AI代理类型和对话管理。
+一个基于 Spring Boot + React 的 AI 智能助手项目框架，支持多种 AI 代理类型和对话管理。
 
 ## 🚀 技术栈
 
 ### 后端
+
 - **Spring Boot 3.3.2** - Java 17
 - **Spring Data JPA** - 数据持久化
 - **PostgreSQL** - 数据库
-- **SpringDoc OpenAPI** - API文档
-- **Ollama** - AI模型集成
+- **SpringDoc OpenAPI** - API 文档
+- **Ollama** - AI 模型集成
 
 ### 前端
+
 - **React 18** - 用户界面
 - **Vite** - 构建工具
 - **Tailwind CSS** - 样式框架
 - **React Router** - 路由管理
-- **React Markdown** - Markdown渲染
+- **React Markdown** - Markdown 渲染
 
 ## 📁 项目结构
 
@@ -45,10 +47,11 @@ ai-agent-project/
 ### 1. 环境准备
 
 确保已安装：
+
 - Java 17+
 - Node.js 18+
 - PostgreSQL
-- Ollama (AI模型服务)
+- Ollama (AI 模型服务)
 
 ### 2. 数据库设置
 
@@ -61,7 +64,7 @@ CREATE USER aiagentuser WITH PASSWORD 'password123';
 GRANT ALL PRIVILEGES ON DATABASE aiagentdb TO aiagentuser;
 ```
 
-### 3. 启动Ollama服务
+### 3. 启动 Ollama 服务
 
 ```bash
 # 安装并启动Ollama
@@ -90,20 +93,43 @@ npm run dev
 
 前端服务将在 `http://localhost:5173` 启动
 
-## 📚 API文档
+## 📚 API 文档
 
-启动后端后，访问以下地址查看API文档：
+启动后端后，访问以下地址查看 API 文档：
+
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/api-docs`
 
-## 🤖 AI代理类型
+## 🤖 AI 代理类型
 
-项目支持以下AI代理类型：
+项目支持以下 AI 代理类型：
 
 1. **General Assistant** (`general`) - 通用助手
 2. **Coding Assistant** (`coding`) - 编程助手
 3. **Creative Writer** (`creative`) - 创意写作助手
 4. **Analytical Assistant** (`analytical`) - 分析助手
+5. **Fitness Assistant** (`fitness`) - 智能健身助手 💪
+
+### 智能健身助手功能
+
+智能健身助手是一个专门的 AI 代理，帮助用户在健身房器械被占用时，提供合适的替代方案。
+
+**主要特性：**
+
+- 🤖 AI 智能推荐替代器械
+- 💪 内置常见健身器械知识库
+- 🎯 基于肌群智能匹配
+- 📝 提供详细训练建议和安全提示
+- 🔄 支持多轮对话
+
+**使用方法：**
+
+```bash
+# 访问健身助手界面
+http://localhost:5173/fitness
+```
+
+详细使用说明请查看 [FITNESS_ASSISTANT_README.md](./FITNESS_ASSISTANT_README.md)
 
 ## 🔧 配置说明
 
@@ -124,46 +150,48 @@ ai.model.name=llama3.2
 
 ```javascript
 export default defineConfig({
-    plugins: [react()],
-    server: {
-        proxy: {
-            '/api': {
-                target: 'http://localhost:8080',
-                changeOrigin: true,
-                secure: false,
-            },
-        },
+  plugins: [react()],
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:8080",
+        changeOrigin: true,
+        secure: false,
+      },
     },
+  },
 });
 ```
 
 ## 📝 主要功能
 
 - ✅ 用户注册/登录
-- ✅ 多类型AI代理对话
+- ✅ 多类型 AI 代理对话
+- ✅ 智能健身助手（器械替代方案推荐）
+- ✅ 健身器械知识库管理
 - ✅ 对话历史管理
 - ✅ 实时消息传递
-- ✅ Markdown消息渲染
-- ✅ 响应式UI设计
-- ✅ API文档自动生成
+- ✅ Markdown 消息渲染
+- ✅ 响应式 UI 设计
+- ✅ API 文档自动生成
 
 ## 🔄 开发工作流
 
 1. **后端开发**: 在 `ai-agent-backend/src/main/java/com/aiagent/main/` 目录下编辑
 2. **前端开发**: 在 `ai-agent-frontend/src/components/` 目录下编辑
-3. **数据库变更**: 修改实体类，Hibernate会自动更新表结构
-4. **API测试**: 使用Swagger UI或Postman测试接口
+3. **数据库变更**: 修改实体类，Hibernate 会自动更新表结构
+4. **API 测试**: 使用 Swagger UI 或 Postman 测试接口
 
 ## 🚀 部署建议
 
 ### 生产环境配置
 
 1. **数据库**: 使用云数据库服务
-2. **AI模型**: 部署到GPU服务器或使用云AI服务
-3. **前端**: 构建静态文件部署到CDN
-4. **后端**: 使用Docker容器化部署
+2. **AI 模型**: 部署到 GPU 服务器或使用云 AI 服务
+3. **前端**: 构建静态文件部署到 CDN
+4. **后端**: 使用 Docker 容器化部署
 
-### Docker部署示例
+### Docker 部署示例
 
 ```dockerfile
 # 后端Dockerfile
@@ -176,8 +204,9 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]
 ## 📞 支持
 
 如有问题，请检查：
+
 1. 数据库连接是否正常
-2. Ollama服务是否运行
+2. Ollama 服务是否运行
 3. 端口是否被占用
 4. 依赖是否正确安装
 
