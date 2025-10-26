@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, TrendingUp, Calendar, Download, Star, ArrowRight, MessageCircle, Target, Zap, Award, Settings } from 'lucide-react';
+import { BarChart3, TrendingUp, Calendar, Download, Star, ArrowRight, MessageCircle, Target, Zap, Award, Settings, Dumbbell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const MonthlyReport = () => {
