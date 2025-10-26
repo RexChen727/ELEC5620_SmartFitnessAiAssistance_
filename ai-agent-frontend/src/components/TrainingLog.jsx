@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Dumbbell, Clock, Edit3, Trash2, Plus, Calendar, Star, ArrowRight, BarChart3, MessageCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Dumbbell, Clock, Edit3, Trash2, Plus, Calendar, Star, ArrowRight, BarChart3, MessageCircle, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const TrainingLog = () => {

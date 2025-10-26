@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageCircle, Send, Calendar, Clock, MapPin, Dumbbell, Star, ArrowRight, BarChart3 } from 'lucide-react';
+import { MessageCircle, Send, Calendar, Clock, MapPin, Dumbbell, Star, ArrowRight, BarChart3, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const AIFitnessPlan = () => {
