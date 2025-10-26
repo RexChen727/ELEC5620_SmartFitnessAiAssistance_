@@ -19,6 +19,7 @@ function App() {
                         <Route index element={<Navigate to="/chat" replace />} />
                         <Route path="chat" element={<ChatInterface />} />
                         <Route path="fitness" element={<FitnessChatInterface />} />
+        <Route path="substitute" element={<FitnessChatInterface />} />
                         <Route path="calendar" element={<Calendar />} />
                     </Route>
                 </Routes>
