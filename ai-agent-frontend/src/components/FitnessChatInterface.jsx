@@ -179,103 +179,95 @@ const TipsCard = () => {
 const AlternativeResults = ({ alternatives, loading }) => {
     if (loading) {
         return (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-center py-8">
-                    <div className="flex items-center space-x-2">
-                        <Loader className="w-5 h-5 animate-spin text-purple-500" />
-                        <span className="text-gray-600">Finding alternatives...</span>
-                    </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-96 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                    <Loader className="w-5 h-5 animate-spin text-purple-500" />
+                    <span className="text-gray-600">Finding alternatives...</span>
                 </div>
             </div>
         );
     }
 
     if (!alternatives || alternatives.length === 0) {
-        return null;
+        return (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-96 flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                    <Dumbbell className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>Search for an exercise to see alternatives</p>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-96 flex flex-col">
+            <div className="flex items-center mb-4 flex-shrink-0">
                 <ArrowRight className="w-6 h-6 text-purple-600 mr-3" />
                 <h2 className="text-xl font-semibold text-gray-900">Alternative Solutions</h2>
             </div>
 
-            <div className="space-y-6">
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4">
                 {alternatives.map((alternative, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-start mb-4">
-                            <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-4">
-                                <span className="text-purple-600 font-bold text-lg">{index + 1}</span>
+                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                        <div className="flex items-start mb-3">
+                            <div className="flex-shrink-0 w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                                <span className="text-purple-600 font-bold text-sm">{index + 1}</span>
                             </div>
                             <div className="flex-1">
-                                <h4 className="text-xl font-bold text-gray-800 mb-2">{alternative.name}</h4>
-                                <p className="text-gray-600 mb-4">{alternative.description}</p>
+                                <h4 className="text-lg font-bold text-gray-800 mb-2">{alternative.name}</h4>
+                                <p className="text-sm text-gray-600 mb-3">{alternative.description}</p>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
                                     {/* Training Parameters */}
-                                    <div className="space-y-3">
-                                        {alternative.setsReps && (
-                                            <div className="flex items-start">
-                                                <CheckCircle size={18} className="text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-700">Sets/Reps</p>
-                                                    <p className="text-sm text-gray-600">{alternative.setsReps}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                        {alternative.weight && (
-                                            <div className="flex items-start">
-                                                <Info size={18} className="text-blue-500 mr-3 mt-0.5 flex-shrink-0" />
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-700">Weight Recommendation</p>
-                                                    <p className="text-sm text-gray-600">{alternative.weight}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                        {alternative.technique && (
-                                            <div className="flex items-start">
-                                                <CheckCircle size={18} className="text-purple-500 mr-3 mt-0.5 flex-shrink-0" />
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-700">Technique</p>
-                                                    <p className="text-sm text-gray-600">{alternative.technique}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Safety and Effects */}
-                                    <div className="space-y-3">
+                                    {alternative.setsReps && (
                                         <div className="flex items-start">
-                                            <CheckCircle size={18} className="text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+                                            <CheckCircle size={16} className="text-green-500 mr-2 mt-0.5 flex-shrink-0" />
                                             <div>
-                                                <p className="text-sm font-semibold text-gray-700">Target Muscles</p>
-                                                <p className="text-sm text-gray-600">{alternative.primaryMuscles}</p>
+                                                <p className="text-xs font-semibold text-gray-700">Sets/Reps</p>
+                                                <p className="text-xs text-gray-600">{alternative.setsReps}</p>
                                             </div>
                                         </div>
-                                        
-                                        {alternative.precautions && (
-                                            <div className="flex items-start">
-                                                <AlertCircle size={18} className="text-orange-500 mr-3 mt-0.5 flex-shrink-0" />
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-700">Precautions</p>
-                                                    <p className="text-sm text-gray-600">{alternative.precautions}</p>
-                                                </div>
+                                    )}
+                                    
+                                    {alternative.weight && (
+                                        <div className="flex items-start">
+                                            <Info size={16} className="text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-700">Weight</p>
+                                                <p className="text-xs text-gray-600">{alternative.weight}</p>
                                             </div>
-                                        )}
-                                        
-                                        {alternative.comparison && (
-                                            <div className="flex items-start">
-                                                <Info size={18} className="text-indigo-500 mr-3 mt-0.5 flex-shrink-0" />
-                                                <div>
-                                                    <p className="text-sm font-semibold text-gray-700">Training Effect Comparison</p>
-                                                    <p className="text-sm text-gray-600">{alternative.comparison}</p>
-                                                </div>
+                                        </div>
+                                    )}
+                                    
+                                    {alternative.technique && (
+                                        <div className="flex items-start">
+                                            <CheckCircle size={16} className="text-purple-500 mr-2 mt-0.5 flex-shrink-0" />
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-700">Technique</p>
+                                                <p className="text-xs text-gray-600">{alternative.technique}</p>
                                             </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
+                                    
+                                    {alternative.precautions && (
+                                        <div className="flex items-start">
+                                            <AlertCircle size={16} className="text-orange-500 mr-2 mt-0.5 flex-shrink-0" />
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-700">Precautions</p>
+                                                <p className="text-xs text-gray-600">{alternative.precautions}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {alternative.comparison && (
+                                        <div className="flex items-start">
+                                            <Info size={16} className="text-indigo-500 mr-2 mt-0.5 flex-shrink-0" />
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-700">Comparison</p>
+                                                <p className="text-xs text-gray-600">{alternative.comparison}</p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
