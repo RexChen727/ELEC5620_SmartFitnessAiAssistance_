@@ -21,6 +21,7 @@ public class AiAgentService {
     private final ObjectMapper objectMapper;
     private final ConversationService conversationService;
     private final MessageService messageService;
+    private final GymEquipmentService gymEquipmentService;
 
     @Value("${ai.model.base-url}")
     private String aiModelBaseUrl;
@@ -31,19 +32,28 @@ public class AiAgentService {
     @Value("${ai.model.api-key:}")
     private String aiModelApiKey;
 
-    private final Map<String, String> agentPrompts = new HashMap<>() {{
-        put("general", "You are a helpful AI assistant. Provide clear and concise responses to user queries.");
-        put("coding", "You are a coding assistant. Help users with programming questions, code reviews, and technical solutions.");
-        put("creative", "You are a creative writing assistant. Help users with creative writing, storytelling, and content creation.");
-        put("analytical", "You are an analytical assistant. Help users analyze data, solve problems, and make informed decisions.");
-    }};
+    private final Map<String, String> agentPrompts = new HashMap<>() {
+        {
+            put("general", "You are a helpful AI assistant. Provide clear and concise responses to user queries.");
+            put("coding",
+                    "You are a coding assistant. Help users with programming questions, code reviews, and technical solutions.");
+            put("creative",
+                    "You are a creative writing assistant. Help users with creative writing, storytelling, and content creation.");
+            put("analytical",
+                    "You are an analytical assistant. Help users analyze data, solve problems, and make informed decisions.");
+            put("fitness",
+                    "You are a fitness AI assistant specializing in gym equipment alternatives. When users ask about equipment that is unavailable or occupied, provide suitable alternatives based on muscle groups and training goals. Always explain why the alternative is suitable and mention safety tips when relevant.");
+        }
+    };
 
-    public AiAgentService(RestTemplate restTemplate, ObjectMapper objectMapper, 
-                         ConversationService conversationService, MessageService messageService) {
+    public AiAgentService(RestTemplate restTemplate, ObjectMapper objectMapper,
+            ConversationService conversationService, MessageService messageService,
+            GymEquipmentService gymEquipmentService) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.conversationService = conversationService;
         this.messageService = messageService;
+        this.gymEquipmentService = gymEquipmentService;
     }
 
     public ChatResponse chat(String agentType, String message, Long conversationId) {
@@ -52,7 +62,7 @@ public class AiAgentService {
             Conversation conversation;
             if (conversationId != null) {
                 conversation = conversationService.findById(conversationId)
-                    .orElseThrow(() -> new RuntimeException("Conversation not found"));
+                        .orElseThrow(() -> new RuntimeException("Conversation not found"));
             } else {
                 // Create new conversation with first message as title
                 String title = message.length() > 50 ? message.substring(0, 50) + "..." : message;
@@ -83,11 +93,11 @@ public class AiAgentService {
 
     private String buildPrompt(String agentType, String message, Conversation conversation) {
         String basePrompt = agentPrompts.getOrDefault(agentType, agentPrompts.get("general"));
-        
+
         // Get conversation history for context
         List<Message> messages = messageService.getMessagesByConversationId(conversation.getId());
         StringBuilder context = new StringBuilder();
-        
+
         for (Message msg : messages) {
             if (msg.getIsUser()) {
                 context.append("User: ").append(msg.getContent()).append("\n");
@@ -95,9 +105,33 @@ public class AiAgentService {
                 context.append("Assistant: ").append(msg.getContent()).append("\n");
             }
         }
-        
-        return basePrompt + "\n\nConversation History:\n" + context.toString() + 
-               "\nCurrent User Message: " + message + "\n\nPlease respond:";
+
+        // Add fitness equipment knowledge base for fitness agent
+        String equipmentKnowledge = "";
+        if ("fitness".equals(agentType)) {
+            equipmentKnowledge = "\n\nFitness Equipment Knowledge Base:\n" + getEquipmentKnowledgeBase();
+        }
+
+        return basePrompt + equipmentKnowledge + "\n\nConversation History:\n" + context.toString() +
+                "\nCurrent User Message: " + message + "\n\nPlease respond:";
+    }
+
+    private String getEquipmentKnowledgeBase() {
+        List<GymEquipment> equipmentList = gymEquipmentService.getAllEquipment();
+        StringBuilder knowledge = new StringBuilder();
+
+        for (GymEquipment equipment : equipmentList) {
+            knowledge.append("\n器械名称: ").append(equipment.getName())
+                    .append("\n描述: ").append(equipment.getDescription())
+                    .append("\n主要锻炼肌群: ").append(equipment.getPrimaryMuscles())
+                    .append("\n替代器械: ").append(equipment.getAlternativeEquipments())
+                    .append("\n训练类型: ").append(equipment.getWorkoutTypes())
+                    .append("\n难度: ").append(equipment.getDifficulty())
+                    .append("\n注意事项: ").append(equipment.getTips())
+                    .append("\n---\n");
+        }
+
+        return knowledge.toString();
     }
 
     private String callAiModel(String prompt) {
@@ -107,12 +141,12 @@ public class AiAgentService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        
+
         // 添加API密钥（如果配置了的话）
         if (aiModelApiKey != null && !aiModelApiKey.isEmpty()) {
             headers.set("Authorization", "Bearer " + aiModelApiKey);
         }
-        
+
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
         String url = aiModelBaseUrl + "/chat";
@@ -120,10 +154,14 @@ public class AiAgentService {
 
         log.info("Raw AI model response: {}", response);
 
+        if (response == null) {
+            throw new RuntimeException("AI model returned null response");
+        }
+
         StringBuilder fullResponse = new StringBuilder();
         try {
             JsonNode jsonNode = objectMapper.readTree(response);
-            
+
             // 检查是否是OpenAI格式的响应
             if (jsonNode.has("choices") && jsonNode.get("choices").isArray()) {
                 // OpenAI API格式

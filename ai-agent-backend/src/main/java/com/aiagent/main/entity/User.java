@@ -23,14 +23,15 @@ public class User {
     private String password;
 
     @Column(nullable = false)
-    private String role;
+    private String role = "USER";
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Conversation> conversations = new ArrayList<>();
 
     // Constructors
-    public User() {}
+    public User() {
+    }
 
     public User(String username, String email, String password, String role) {
         this.username = username;
