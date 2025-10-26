@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, Dumbbell, Clock, Edit3, Plus, CheckCircle, Star, ArrowRight } from 'lucide-react';
+import { Calendar, Dumbbell, Clock, Edit3, Plus, CheckCircle, Star, ArrowRight, BarChart3, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const WeeklyPlan = () => {
