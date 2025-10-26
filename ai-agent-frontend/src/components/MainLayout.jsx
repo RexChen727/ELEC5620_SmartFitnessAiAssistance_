@@ -37,7 +37,13 @@ const MainLayout = () => {
     }
 
     // Hide navigation for pages that have their own navigation
-    const hideNavigation = location.pathname === '/fitness' || location.pathname === '/substitute';
+    const hideNavigation = location.pathname === '/fitness' || 
+                          location.pathname === '/substitute' ||
+                          location.pathname === '/home' ||
+                          location.pathname === '/ai-plan' ||
+                          location.pathname === '/weekly-plan' ||
+                          location.pathname === '/training-log' ||
+                          location.pathname === '/monthly-report';
 
     return (
         <div className="min-h-screen bg-gray-50">
