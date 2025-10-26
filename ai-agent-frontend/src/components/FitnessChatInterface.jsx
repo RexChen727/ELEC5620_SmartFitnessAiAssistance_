@@ -1,7 +1,75 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, ArrowRight, CheckCircle, AlertCircle, Info, Loader, MessageCircle, X, Send, Search, Lightbulb } from 'lucide-react';
+import { Dumbbell, ArrowRight, CheckCircle, AlertCircle, Info, Loader, MessageCircle, X, Send, Search, Lightbulb, Star, Home, Calendar, BarChart3, Settings } from 'lucide-react';
 import { useUser } from './UserContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+// Navigation Bar Component
+const NavigationBar = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    
+    const navigationItems = [
+        { path: '/', icon: Home, label: 'Home', key: 'home' },
+        { path: '/chat', icon: Star, label: 'AI Fitness Plan', key: 'chat' },
+        { path: '/calendar', icon: Calendar, label: 'Weekly Plan', key: 'calendar' },
+        { path: '/fitness', icon: Dumbbell, label: 'Training Log', key: 'fitness' },
+        { path: '/reports', icon: BarChart3, label: 'Monthly Report', key: 'reports' },
+        { path: '/substitute', icon: Settings, label: 'Substitute', key: 'substitute' }
+    ];
+
+    const isActive = (path) => {
+        return location.pathname === path;
+    };
+
+    return (
+        <nav className="bg-white border-b border-gray-200 px-6 py-4">
+            <div className="flex items-center justify-between">
+                {/* Logo */}
+                <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                        <Star className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-900">FitAI</h1>
+                        <p className="text-xs text-gray-500">AI-Powered Training</p>
+                    </div>
+                </div>
+
+                {/* Navigation Items */}
+                <div className="flex items-center space-x-1">
+                    {navigationItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                            <button
+                                key={item.key}
+                                onClick={() => navigate(item.path)}
+                                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                                    isActive(item.path)
+                                        ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                }`}
+                            >
+                                <Icon size={18} />
+                                <span className="text-sm font-medium">{item.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* AI Assistant */}
+                <div className="flex items-center space-x-3">
+                    <button className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
+                        <MessageCircle size={18} />
+                        <span className="text-sm font-medium">AI Assistant</span>
+                    </button>
+                    <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                        <span className="text-xs font-bold text-white">1</span>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    );
+};
 
 // Exercise Substitution Card Component
 const ExerciseSubstitutionCard = ({ onSearch, onPopularClick, loading }) => {
@@ -515,6 +583,9 @@ const FitnessChatInterface = () => {
 
     return (
         <div className="min-h-screen bg-gray-50">
+            {/* Navigation Bar */}
+            <NavigationBar />
+            
             {/* Main Content */}
             <div className="max-w-6xl mx-auto px-6 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
