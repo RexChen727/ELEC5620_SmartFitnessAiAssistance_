@@ -9,9 +9,10 @@ group = 'com.aiagent'
 version = '0.0.1-SNAPSHOT'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
+    toolchain {
+        // 使用环境可用的 JDK 21，避免缺少 JDK 17 的构建失败
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 repositories {

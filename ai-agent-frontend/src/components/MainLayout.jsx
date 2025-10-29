@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { MessageSquare, Calendar, LogOut, User } from 'lucide-react';
+import { MessageSquare, Calendar, LogOut, User, Dumbbell } from 'lucide-react';
 import { useUser } from './UserContext';
 
 const MainLayout = () => {
@@ -15,7 +15,8 @@ const MainLayout = () => {
 
     const navigationItems = [
         { path: '/chat', icon: MessageSquare, label: 'AI Chat', key: 'chat' },
-        { path: '/calendar', icon: Calendar, label: 'Calendar', key: 'calendar' }
+        { path: '/calendar', icon: Calendar, label: 'Calendar', key: 'calendar' },
+        { path: '/training-log', icon: Dumbbell, label: 'Training Log', key: 'training-log' }
     ];
 
     const isActive = (path) => {

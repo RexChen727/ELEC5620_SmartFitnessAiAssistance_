@@ -4,6 +4,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import ChatInterface from './components/ChatInterface';
 import Calendar from './components/Calendar';
+import TrainingLog from './components/TrainingLog';
 import MainLayout from './components/MainLayout';
 import { UserProvider } from './components/UserContext';
 
@@ -18,6 +19,7 @@ function App() {
                         <Route index element={<Navigate to="/chat" replace />} />
                         <Route path="chat" element={<ChatInterface />} />
                         <Route path="calendar" element={<Calendar />} />
+                        <Route path="training-log" element={<TrainingLog />} />
                     </Route>
                 </Routes>
             </Router>
