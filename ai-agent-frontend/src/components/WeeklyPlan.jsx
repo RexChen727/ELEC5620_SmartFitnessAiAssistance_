@@ -780,11 +780,11 @@ const WeeklyPlan = () => {
 
                     {/* AI Coach Column (ported chat) */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col h-full">
-                        <div className="pb-3 border-b border-gray-200">
+                        <div className="pb-3 border-b border-gray-200 flex-shrink-0">
                             <h3 className="text-lg font-semibold text-gray-900">AI Fitness Coach</h3>
                             <p className="text-sm text-gray-600">Describe your goals and I'll create a personalized plan</p>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
                             {messages.map((message) => (
                                 <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-[80%] p-3 rounded-lg ${message.type === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
@@ -905,7 +905,7 @@ const WeeklyPlan = () => {
                             </div>
                         )}
                         </div>
-                        <div className="pt-3 border-t border-gray-200">
+                        <div className="pt-3 border-t border-gray-200 flex-shrink-0">
                             <div className="flex space-x-2">
                                 <input
                                     type="text"
