@@ -29,35 +29,119 @@ const WeeklyPlan = () => {
         {
             id: 1,
             type: 'ai',
-            content: "Hi! I'm your AI fitness coach. Tell me about your fitness goals, available time, and preferences, and I'll create a personalized workout plan for you!",
+            welcome: true,
+            content: "Hi! I'm your AI fitness planner! If you're feeling lost about your training plan, let me help you out! You can share your needs with me, or click:",
             timestamp: new Date()
         }
     ]);
     const [inputMessage, setInputMessage] = useState('');
     const [isThinking, setIsThinking] = useState(false);
 
+    // UI state for interactive prompts
+    const [intensityForm, setIntensityForm] = useState({
+        background: '',
+        lastStructured: '',
+        bmiBand: '',
+        flags: {
+            lowSleep: false,
+            sore: false,
+            pain: false
+        }
+    });
+    const [selectedObjectives, setSelectedObjectives] = useState([]);
+    const MAX_OBJECTIVES = 2;
+
     const handleSendMessage = async () => {
         if (!inputMessage.trim()) return;
+
         const userMessage = {
             id: messages.length + 1,
             type: 'user',
             content: inputMessage,
             timestamp: new Date()
         };
+
         setMessages(prev => [...prev, userMessage]);
         setInputMessage('');
         setIsThinking(true);
-        // TODO: wire to backend later; keep mock for now
+
+        // Simulate AI response
         setTimeout(() => {
             const aiResponse = {
-                id: Date.now(),
+                id: messages.length + 2,
                 type: 'ai',
-                content: 'Got it! I will tailor suggestions to your schedule and goals.',
+                content: "Great! Based on your preferences, I'll create a personalized workout plan. Let me generate a schedule that fits your lifestyle and goals.",
                 timestamp: new Date()
             };
             setMessages(prev => [...prev, aiResponse]);
             setIsThinking(false);
-        }, 1200);
+        }, 2000);
+    };
+
+    const pushAIMessage = (content, extra = {}) => {
+        const aiMsg = {
+            id: messages.length + 1,
+            type: 'ai',
+            timestamp: new Date(),
+            content,
+            ...extra
+        };
+        setMessages(prev => [...prev, aiMsg]);
+    };
+
+    const showIntensityPrompt = () => {
+        pushAIMessage(
+            "Let's tune today's effort. Please select the options that best describe you today.",
+            { kind: 'intensity_prompt' }
+        );
+    };
+
+    const showObjectivesPrompt = () => {
+        pushAIMessage(
+            'Pick your primary training goal today:',
+            { kind: 'objectives_prompt' }
+        );
+    };
+
+    const computeRecommendedIntensity = (form) => {
+        // Simple rules based on provided logic snapshot
+        const { background, lastStructured, bmiBand, flags } = form;
+        if (flags.pain) return 'Recovery (Very Easy)';
+        if (flags.lowSleep || flags.sore) return 'Base (Easy–Moderate)';
+
+        if (lastStructured === 'over3m') return (background === 'consistent' || background === 'experienced') ? 'Base (Easy–Moderate)' : 'Recovery (Very Easy)';
+        if (lastStructured === '1to3m') return 'Base (Easy–Moderate)';
+        if (lastStructured === '1to4w') {
+            return (background === 'consistent' || background === 'experienced') ? 'Build (Moderate–Challenging)' : 'Base (Easy–Moderate)';
+        }
+        // within1w
+        let level = 'Base (Easy–Moderate)';
+        if (background === 'consistent') level = 'Build (Moderate–Challenging)';
+        if (background === 'experienced') level = 'Peak (Challenging)';
+        if (bmiBand === 'high' && (background !== 'consistent' && background !== 'experienced')) level = 'Recovery (Very Easy)';
+        return level;
+    };
+
+    const handleSubmitIntensity = () => {
+        const recommendation = computeRecommendedIntensity(intensityForm);
+        const summary = `Background: ${intensityForm.background || '-'}, Last training: ${intensityForm.lastStructured || '-'}, BMI band: ${intensityForm.bmiBand || '-'}, Flags: ${Object.entries(intensityForm.flags).filter(([,v])=>v).map(([k])=>k).join(', ') || 'none'}`;
+
+        // Echo user selection and AI acknowledgement
+        setMessages(prev => [
+            ...prev,
+            { id: prev.length + 1, type: 'user', content: `Training Intensity selections → ${summary}`, timestamp: new Date() },
+            { id: prev.length + 2, type: 'ai', content: `Got it. Your recommended intensity is: ${recommendation}. I'll generate your plan accordingly.`, timestamp: new Date() }
+        ]);
+    };
+
+    const handleSubmitObjectives = () => {
+        if (!selectedObjectives.length) return;
+        const summary = selectedObjectives.join(', ');
+        setMessages(prev => [
+            ...prev,
+            { id: prev.length + 1, type: 'user', content: `Selected goals: ${summary}`, timestamp: new Date() },
+            { id: prev.length + 2, type: 'ai', content: 'Understood. I will craft your plan around these goals.', timestamp: new Date() }
+        ]);
     };
 
     // Day labels will be generated from current window (leftmost = today)
@@ -561,9 +645,9 @@ const WeeklyPlan = () => {
 
                     {/* Week header with navigation */}
                     <div className="flex items-center justify-between mb-3">
-                        <div className="text-sm text-gray-600">
+                                <div className="text-sm text-gray-600">
                             <span className="font-semibold">Week:</span> {formatWeekRange(weekStart)}
-                        </div>
+                                </div>
                         <div className="flex items-center space-x-2">
                             <button onClick={goPrevWeek} className="p-2 rounded-lg hover:bg-gray-100">
                                 <ChevronLeft size={18} />
@@ -610,8 +694,8 @@ const WeeklyPlan = () => {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-full flex flex-col">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold text-gray-900">
-                                {days[selectedDay]} Workouts
-                            </h3>
+                                    {days[selectedDay]} Workouts
+                                </h3>
                             <div className="flex items-center space-x-2">
                                 <button
                                     onClick={handleClearDayClick}
@@ -630,67 +714,67 @@ const WeeklyPlan = () => {
                                     <span>Add Workout</span>
                                 </button>
                             </div>
-                        </div>
+                            </div>
 
                         <div className="flex-1 overflow-auto">
-                        {getWorkoutsForDay(selectedDay).length > 0 ? (
+                            {getWorkoutsForDay(selectedDay).length > 0 ? (
                             <div className="space-y-3">
-                                {getWorkoutsForDay(selectedDay).map((workout) => (
-                                    <div
-                                        key={workout.id}
+                                    {getWorkoutsForDay(selectedDay).map((workout) => (
+                                        <div
+                                            key={workout.id}
                                         className={`p-4 rounded-lg border transition ${
-                                            workout.completed
-                                                ? 'border-green-200 bg-green-50'
-                                                : 'border-gray-200 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center space-x-3">
-                                                <Dumbbell size={20} className="text-gray-600" />
-                                                <div>
-                                                    <h4 className="font-semibold text-gray-900">{workout.workoutName}</h4>
-                                                    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                                                        {workout.sets && workout.reps && (
-                                                            <span>{workout.sets} sets × {workout.reps} reps</span>
-                                                        )}
-                                                        {workout.weight && <span>{workout.weight}</span>}
-                                                        {workout.duration && (
-                                                            <span className="flex items-center space-x-1">
-                                                                <Clock size={14} />
-                                                                <span>{workout.duration}</span>
-                                                            </span>
+                                                workout.completed
+                                                    ? 'border-green-200 bg-green-50'
+                                                    : 'border-gray-200 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center space-x-3">
+                                                    <Dumbbell size={20} className="text-gray-600" />
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900">{workout.workoutName}</h4>
+                                                        <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                                                            {workout.sets && workout.reps && (
+                                                                <span>{workout.sets} sets × {workout.reps} reps</span>
+                                                            )}
+                                                            {workout.weight && <span>{workout.weight}</span>}
+                                                            {workout.duration && (
+                                                                <span className="flex items-center space-x-1">
+                                                                    <Clock size={14} />
+                                                                    <span>{workout.duration}</span>
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {workout.notes && (
+                                                            <p className="text-xs text-gray-500 mt-1">{workout.notes}</p>
                                                         )}
                                                     </div>
-                                                    {workout.notes && (
-                                                        <p className="text-xs text-gray-500 mt-1">{workout.notes}</p>
-                                                    )}
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <button
+                                                        onClick={() => toggleWorkoutComplete(workout.id)}
+                                                        className={`p-2 rounded-lg transition-colors ${
+                                                            workout.completed
+                                                                ? 'bg-green-100 text-green-600'
+                                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                        }`}
+                                                    >
+                                                        <CheckCircle size={20} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleEditWorkout(workout)}
+                                                        className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                                                    >
+                                                        <Edit3 size={16} />
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center space-x-2">
-                                                <button
-                                                    onClick={() => toggleWorkoutComplete(workout.id)}
-                                                    className={`p-2 rounded-lg transition-colors ${
-                                                        workout.completed
-                                                            ? 'bg-green-100 text-green-600'
-                                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                    }`}
-                                                >
-                                                    <CheckCircle size={20} />
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleEditWorkout(workout)}
-                                                    className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
-                                                >
-                                                    <Edit3 size={16} />
-                                                </button>
-                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
+                                    ))}
+                                </div>
+                            ) : (
                             <div className="text-center py-6 text-gray-500">No workouts scheduled</div>
-                        )}
+                            )}
                         </div>
                     </div>
 
@@ -705,6 +789,107 @@ const WeeklyPlan = () => {
                                 <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-[80%] p-3 rounded-lg ${message.type === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
                                         <p className="text-sm">{message.content}</p>
+                                        {message.welcome && (
+                                            <div className="mt-3 flex items-center gap-2">
+                                        <button
+                                                    onClick={showIntensityPrompt}
+                                                    className="px-3 py-1.5 text-sm rounded-md bg-purple-600 text-white hover:bg-purple-700"
+                                                >
+                                                    Training Intensity
+                                        </button>
+                                                <button
+                                                    onClick={showObjectivesPrompt}
+                                                    className="px-3 py-1.5 text-sm rounded-md bg-gray-900 text-white hover:bg-gray-800"
+                                                >
+                                                    Training Objectives
+                                                </button>
+                                </div>
+                            )}
+                                        {message.kind === 'intensity_prompt' && (
+                                            <div className="mt-3 space-y-4">
+                                                <div>
+                                                    <p className="text-sm font-medium mb-2">1) Your training background</p>
+                                                    <div className="space-y-1 text-sm">
+                                                        <label className="flex items-center gap-2"><input type="radio" name="bg" checked={intensityForm.background==='new'} onChange={()=>setIntensityForm(v=>({...v, background:'new'}))}/> I'm new (≤ 1 month)</label>
+                                                        <label className="flex items-center gap-2"><input type="radio" name="bg" checked={intensityForm.background==='onoff'} onChange={()=>setIntensityForm(v=>({...v, background:'onoff'}))}/> On and off (1–6 months total)</label>
+                                                        <label className="flex items-center gap-2"><input type="radio" name="bg" checked={intensityForm.background==='consistent'} onChange={()=>setIntensityForm(v=>({...v, background:'consistent'}))}/> Consistent (6–24 months)</label>
+                                                        <label className="flex items-center gap-2"><input type="radio" name="bg" checked={intensityForm.background==='experienced'} onChange={()=>setIntensityForm(v=>({...v, background:'experienced'}))}/> Experienced (2+ years)</label>
+                        </div>
+                    </div>
+                                    <div>
+                                                    <p className="text-sm font-medium mb-2">2) Time since last structured training</p>
+                                                    <div className="space-y-1 text-sm">
+                                                        <label className="flex items-center gap-2"><input type="radio" name="lt" checked={intensityForm.lastStructured==='within1w'} onChange={()=>setIntensityForm(v=>({...v, lastStructured:'within1w'}))}/> Within the last week</label>
+                                                        <label className="flex items-center gap-2"><input type="radio" name="lt" checked={intensityForm.lastStructured==='1to4w'} onChange={()=>setIntensityForm(v=>({...v, lastStructured:'1to4w'}))}/> 1–4 weeks ago</label>
+                                                        <label className="flex items-center gap-2"><input type="radio" name="lt" checked={intensityForm.lastStructured==='1to3m'} onChange={()=>setIntensityForm(v=>({...v, lastStructured:'1to3m'}))}/> 1–3 months ago</label>
+                                                        <label className="flex items-center gap-2"><input type="radio" name="lt" checked={intensityForm.lastStructured==='over3m'} onChange={()=>setIntensityForm(v=>({...v, lastStructured:'over3m'}))}/> Over 3 months ago</label>
+                                        </div>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium mb-2">3) Height–weight range (rough BMI band)</p>
+                                                    <div className="space-y-1 text-sm">
+                                                        <label className="flex items-center gap-2"><input type="radio" name="bmi" checked={intensityForm.bmiBand==='light'} onChange={()=>setIntensityForm(v=>({...v, bmiBand:'light'}))}/> Lighter for my height</label>
+                                                        <label className="flex items-center gap-2"><input type="radio" name="bmi" checked={intensityForm.bmiBand==='typical'} onChange={()=>setIntensityForm(v=>({...v, bmiBand:'typical'}))}/> Typical range</label>
+                                                        <label className="flex items-center gap-2"><input type="radio" name="bmi" checked={intensityForm.bmiBand==='abitHigh'} onChange={()=>setIntensityForm(v=>({...v, bmiBand:'abitHigh'}))}/> A bit higher</label>
+                                                        <label className="flex items-center gap-2"><input type="radio" name="bmi" checked={intensityForm.bmiBand==='high'} onChange={()=>setIntensityForm(v=>({...v, bmiBand:'high'}))}/> Higher and building up</label>
+                                        </div>
+                                    </div>
+                                    <div>
+                                                    <p className="text-sm font-medium mb-2">Quick check (optional)</p>
+                                                    <div className="space-y-1 text-sm">
+                                                        <label className="flex items-center gap-2"><input type="checkbox" checked={intensityForm.flags.lowSleep} onChange={(e)=>setIntensityForm(v=>({...v, flags:{...v.flags, lowSleep:e.target.checked}}))}/> I slept &lt; 6 hours last night</label>
+                                                        <label className="flex items-center gap-2"><input type="checkbox" checked={intensityForm.flags.sore} onChange={(e)=>setIntensityForm(v=>({...v, flags:{...v.flags, sore:e.target.checked}}))}/> I feel sore or unusually tired today</label>
+                                                        <label className="flex items-center gap-2"><input type="checkbox" checked={intensityForm.flags.pain} onChange={(e)=>setIntensityForm(v=>({...v, flags:{...v.flags, pain:e.target.checked}}))}/> I have pain/discomfort beyond normal soreness</label>
+                                        </div>
+                                                </div>
+                                                <div className="pt-1">
+                                                    <button onClick={handleSubmitIntensity} className="px-3 py-1.5 text-sm rounded-md bg-purple-600 text-white hover:bg-purple-700">Submit</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {message.kind === 'objectives_prompt' && (
+                                            <div className="mt-3 space-y-3 text-sm">
+                                                <div className="space-y-1">
+                                                    {[
+                                                        'Fat Loss / Body Composition',
+                                                        'Muscle Gain (Hypertrophy)',
+                                                        'Strength',
+                                                        'Endurance / Cardio Fitness',
+                                                        'General Fitness / Health',
+                                                        'Mobility & Flexibility',
+                                                        'Posture & Core Stability',
+                                                        'Performance for a Sport',
+                                                        'Rehab / Return to Training',
+                                                        'Maintenance',
+                                                        'Stress Relief / Wellbeing'
+                                                    ].map(opt => (
+                                                        <label key={opt} className="flex items-center gap-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedObjectives.includes(opt)}
+                                                                onChange={(e) => {
+                                                                    const checked = e.target.checked;
+                                                                    setSelectedObjectives((prev) => {
+                                                                        if (checked) {
+                                                                            if (prev.includes(opt)) return prev;
+                                                                            if (prev.length >= MAX_OBJECTIVES) return prev; // cap reached
+                                                                            return [...prev, opt];
+                                                                        }
+                                                                        return prev.filter(o => o !== opt);
+                                                                    });
+                                                                }}
+                                                                disabled={!selectedObjectives.includes(opt) && selectedObjectives.length >= MAX_OBJECTIVES}
+                                                            />
+                                                            {opt}
+                                                        </label>
+                                                    ))}
+                                        </div>
+                                                <div className="pt-1 flex items-center gap-3">
+                                                    <button onClick={handleSubmitObjectives} className="px-3 py-1.5 text-sm rounded-md bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50" disabled={!selectedObjectives.length}>Submit</button>
+                                                    <span className="text-xs text-gray-600">Select up to {MAX_OBJECTIVES}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                         <p className="text-xs opacity-70 mt-1">{message.timestamp.toLocaleTimeString()}</p>
                                     </div>
                                 </div>
@@ -715,10 +900,10 @@ const WeeklyPlan = () => {
                                         <div className="flex items-center space-x-2">
                                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
                                             <span className="text-sm">AI is thinking...</span>
-                                        </div>
                                     </div>
                                 </div>
-                            )}
+                            </div>
+                        )}
                         </div>
                         <div className="pt-3 border-t border-gray-200">
                             <div className="flex space-x-2">
@@ -730,7 +915,7 @@ const WeeklyPlan = () => {
                                     placeholder="Describe your fitness goals..."
                                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
                                 />
-                                <button
+                                <button 
                                     onClick={handleSendMessage}
                                     disabled={!inputMessage.trim() || isThinking}
                                     className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
