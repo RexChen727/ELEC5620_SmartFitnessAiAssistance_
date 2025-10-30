@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Dumbbell, Clock, Edit3, Plus, CheckCircle, Star, ArrowRight, BarChart3, MessageCircle, Settings, ChevronLeft, ChevronRight, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -36,6 +36,7 @@ const WeeklyPlan = () => {
     ]);
     const [inputMessage, setInputMessage] = useState('');
     const [isThinking, setIsThinking] = useState(false);
+    const messagesEndRef = useRef(null);
 
     // UI state for interactive prompts
     const [intensityForm, setIntensityForm] = useState({
@@ -143,6 +144,15 @@ const WeeklyPlan = () => {
             { id: prev.length + 2, type: 'ai', content: 'Understood. I will craft your plan around these goals.', timestamp: new Date() }
         ]);
     };
+
+    // Auto-scroll to bottom when messages change
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, isThinking]);
 
     // Day labels will be generated from current window (leftmost = today)
 
@@ -689,10 +699,10 @@ const WeeklyPlan = () => {
                 </div>
 
                 {/* Selected Day Details + AI Coach */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch content-stretch flex-1 mt-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Workouts Column */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-full flex flex-col">
-                        <div className="flex items-center justify-between mb-4">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col" style={{ height: '600px' }}>
+                        <div className="flex items-center justify-between mb-4 flex-shrink-0">
                             <h3 className="text-lg font-semibold text-gray-900">
                                     {days[selectedDay]} Workouts
                                 </h3>
@@ -716,7 +726,7 @@ const WeeklyPlan = () => {
                             </div>
                             </div>
 
-                        <div className="flex-1 overflow-auto">
+                        <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
                             {getWorkoutsForDay(selectedDay).length > 0 ? (
                             <div className="space-y-3">
                                     {getWorkoutsForDay(selectedDay).map((workout) => (
@@ -779,12 +789,12 @@ const WeeklyPlan = () => {
                     </div>
 
                     {/* AI Coach Column (ported chat) */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col h-full">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col" style={{ height: '600px' }}>
                         <div className="pb-3 border-b border-gray-200 flex-shrink-0">
                             <h3 className="text-lg font-semibold text-gray-900">AI Fitness Coach</h3>
                             <p className="text-sm text-gray-600">Describe your goals and I'll create a personalized plan</p>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ minHeight: 0, maxHeight: '100%' }}>
                             {messages.map((message) => (
                                 <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-[80%] p-3 rounded-lg ${message.type === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
@@ -904,6 +914,7 @@ const WeeklyPlan = () => {
                                 </div>
                             </div>
                         )}
+                            <div ref={messagesEndRef} />
                         </div>
                         <div className="pt-3 border-t border-gray-200 flex-shrink-0">
                             <div className="flex space-x-2">
