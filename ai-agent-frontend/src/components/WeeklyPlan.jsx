@@ -63,20 +63,162 @@ const WeeklyPlan = () => {
         };
 
         setMessages(prev => [...prev, userMessage]);
+        const messageContent = inputMessage;
         setInputMessage('');
         setIsThinking(true);
 
-        // Simulate AI response
-        setTimeout(() => {
-            const aiResponse = {
+        try {
+            // 首先让 AI 解析用户意图
+            const intentPrompt = `You are a fitness assistant. Analyze this user request and determine if it's an action command or just a question.
+
+User request: "${messageContent}"
+
+Current context:
+- Current day: ${days[selectedDay]}
+- Weekly plan exists: ${weeklyPlan ? 'Yes' : 'No'}
+
+If it's an ACTION command (like add/remove/clear workouts), respond with JSON:
+{
+  "isAction": true,
+  "action": "clear_day" | "add_workout" | "remove_workout" | "general_response",
+  "parameters": {
+    "muscleGroup": "chest/back/legs/etc",
+    "count": number,
+    "exerciseName": "string"
+  },
+  "response": "User-friendly confirmation message"
+}
+
+If it's just a QUESTION or CONVERSATION, respond with JSON:
+{
+  "isAction": false,
+  "response": "Your natural conversational response"
+}
+
+Respond ONLY with valid JSON, no other text.`;
+
+            const response = await axios.post('/api/chat/general', {
+                message: intentPrompt,
+                conversationId: null
+            });
+
+            let aiResponseText = response.data.response.trim();
+            
+            // 尝试从回复中提取 JSON
+            let intent;
+            try {
+                // 移除可能的 markdown 代码块标记
+                aiResponseText = aiResponseText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+                intent = JSON.parse(aiResponseText);
+            } catch (parseError) {
+                // 如果无法解析为 JSON，当作普通对话处理
+                intent = {
+                    isAction: false,
+                    response: aiResponseText
+                };
+            }
+
+            // 根据意图执行相应操作
+            if (intent.isAction && weeklyPlan) {
+                let actionResult = '';
+                
+                switch (intent.action) {
+                    case 'clear_day':
+                        try {
+                            await axios.delete(`/api/weekly-plan/clear-day?planId=${weeklyPlan.id}&dayIndex=${selectedDay}`);
+                            await loadAllPlans();
+                            actionResult = intent.response || `✅ 已清除 ${days[selectedDay]} 的所有训练！`;
+                        } catch (error) {
+                            actionResult = `❌ 清除失败：${error.response?.data?.error || error.message}`;
+                        }
+                        break;
+
+                    case 'add_workout':
+                        if (intent.parameters) {
+                            try {
+                                const muscleGroup = intent.parameters.muscleGroup || 'General';
+                                const count = intent.parameters.count || 1;
+                                
+                                // 根据肌群生成训练名称
+                                const workoutNames = {
+                                    'chest': ['Bench Press', 'Push-ups', 'Dumbbell Flyes', 'Cable Crossover', 'Incline Press'],
+                                    'back': ['Pull-ups', 'Barbell Row', 'Lat Pulldown', 'Deadlift', 'Cable Row'],
+                                    'legs': ['Squats', 'Leg Press', 'Lunges', 'Leg Curl', 'Calf Raises'],
+                                    'shoulders': ['Overhead Press', 'Lateral Raises', 'Front Raises', 'Rear Delt Flyes', 'Arnold Press'],
+                                    'arms': ['Bicep Curls', 'Tricep Dips', 'Hammer Curls', 'Tricep Extensions', 'Preacher Curls'],
+                                    'core': ['Planks', 'Crunches', 'Leg Raises', 'Russian Twists', 'Mountain Climbers']
+                                };
+                                
+                                const exercises = workoutNames[muscleGroup.toLowerCase()] || workoutNames['chest'];
+                                
+                                // 添加指定数量的训练
+                                for (let i = 0; i < Math.min(count, exercises.length); i++) {
+                                    const workoutData = {
+                                        planId: weeklyPlan.id,
+                                        dayIndex: selectedDay,
+                                        workoutName: exercises[i],
+                                        sets: 3,
+                                        reps: 12,
+                                        weight: '',
+                                        duration: '',
+                                        notes: `AI generated ${muscleGroup} workout`,
+                                        completed: false
+                                    };
+                                    
+                                    await axios.post('/api/weekly-plan/add-workout', workoutData);
+                                }
+                                
+                                await loadAllPlans();
+                                actionResult = intent.response || `✅ 已为您添加 ${count} 个${muscleGroup}训练！`;
+                            } catch (error) {
+                                actionResult = `❌ 添加失败：${error.response?.data?.error || error.message}`;
+                            }
+                        }
+                        break;
+
+                    default:
+                        actionResult = intent.response || '我理解了您的需求，但这个操作暂时还不支持。';
+                }
+
+                const aiResponse = {
+                    id: messages.length + 2,
+                    type: 'ai',
+                    content: actionResult,
+                    timestamp: new Date()
+                };
+                setMessages(prev => [...prev, aiResponse]);
+            } else if (!intent.isAction) {
+                // 普通对话
+                const aiResponse = {
+                    id: messages.length + 2,
+                    type: 'ai',
+                    content: intent.response,
+                    timestamp: new Date()
+                };
+                setMessages(prev => [...prev, aiResponse]);
+            } else {
+                // 没有训练计划时的提示
+                const aiResponse = {
+                    id: messages.length + 2,
+                    type: 'ai',
+                    content: '您还没有创建本周的训练计划。请先生成一个训练计划，或者我可以帮您创建一个？',
+                    timestamp: new Date()
+                };
+                setMessages(prev => [...prev, aiResponse]);
+            }
+
+        } catch (error) {
+            console.error('Error calling AI:', error);
+            const errorResponse = {
                 id: messages.length + 2,
                 type: 'ai',
-                content: "Great! Based on your preferences, I'll create a personalized workout plan. Let me generate a schedule that fits your lifestyle and goals.",
+                content: 'Sorry, I encountered an error. Please try again.',
                 timestamp: new Date()
             };
-            setMessages(prev => [...prev, aiResponse]);
+            setMessages(prev => [...prev, errorResponse]);
+        } finally {
             setIsThinking(false);
-        }, 2000);
+        }
     };
 
     const pushAIMessage = (content, extra = {}) => {

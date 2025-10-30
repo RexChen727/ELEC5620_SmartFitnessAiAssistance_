@@ -144,7 +144,10 @@ public class AiAgentService {
         // 检测是否是 Gemini API
         if (aiModelBaseUrl.contains("generativelanguage.googleapis.com")) {
             // Gemini API 格式
-            url = aiModelBaseUrl + "/" + aiModelName + ":generateContent?key=" + aiModelApiKey;
+            url = aiModelBaseUrl + "/" + aiModelName + ":generateContent";
+            
+            // Gemini 使用 X-goog-api-key header
+            headers.set("X-goog-api-key", aiModelApiKey);
             
             Map<String, Object> content = new HashMap<>();
             content.put("parts", Collections.singletonList(Map.of("text", prompt)));
