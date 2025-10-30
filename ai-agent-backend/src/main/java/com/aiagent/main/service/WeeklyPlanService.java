@@ -162,19 +162,34 @@ public class WeeklyPlanService {
      * Call AI model to generate plan
      */
     private String callAiModel(String prompt) {
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", aiModelName);
-        requestBody.put("messages", Collections.singletonList(Map.of("role", "user", "content", prompt)));
-
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        if (aiModelApiKey != null && !aiModelApiKey.isEmpty()) {
-            headers.set("Authorization", "Bearer " + aiModelApiKey);
+        String url;
+        Map<String, Object> requestBody = new HashMap<>();
+
+        // 检测是否是 Gemini API
+        if (aiModelBaseUrl.contains("generativelanguage.googleapis.com")) {
+            // Gemini API 格式
+            url = aiModelBaseUrl + "/" + aiModelName + ":generateContent?key=" + aiModelApiKey;
+            
+            Map<String, Object> content = new HashMap<>();
+            content.put("parts", Collections.singletonList(Map.of("text", prompt)));
+            
+            requestBody.put("contents", Collections.singletonList(content));
+        } else {
+            // OpenAI/Ollama 格式
+            requestBody.put("model", aiModelName);
+            requestBody.put("messages", Collections.singletonList(Map.of("role", "user", "content", prompt)));
+            
+            if (aiModelApiKey != null && !aiModelApiKey.isEmpty()) {
+                headers.set("Authorization", "Bearer " + aiModelApiKey);
+            }
+            
+            url = aiModelBaseUrl + "/chat";
         }
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-        String url = aiModelBaseUrl + "/chat";
         String response = restTemplate.postForObject(url, entity, String.class);
 
         log.info("Raw AI model response: {}", response);
@@ -188,7 +203,24 @@ public class WeeklyPlanService {
         try {
             JsonNode jsonNode = objectMapper.readTree(response);
             
-            if (jsonNode.has("choices") && jsonNode.get("choices").isArray()) {
+            // 检查是否是 Gemini 格式的响应
+            if (jsonNode.has("candidates") && jsonNode.get("candidates").isArray()) {
+                // Gemini API 格式
+                JsonNode candidates = jsonNode.get("candidates");
+                if (candidates.size() > 0) {
+                    JsonNode firstCandidate = candidates.get(0);
+                    if (firstCandidate.has("content") && firstCandidate.get("content").has("parts")) {
+                        JsonNode parts = firstCandidate.get("content").get("parts");
+                        if (parts.isArray() && parts.size() > 0) {
+                            JsonNode firstPart = parts.get(0);
+                            if (firstPart.has("text")) {
+                                fullResponse.append(firstPart.get("text").asText());
+                            }
+                        }
+                    }
+                }
+            } else if (jsonNode.has("choices") && jsonNode.get("choices").isArray()) {
+                // OpenAI API 格式
                 JsonNode choices = jsonNode.get("choices");
                 if (choices.size() > 0) {
                     JsonNode firstChoice = choices.get(0);
@@ -197,6 +229,7 @@ public class WeeklyPlanService {
                     }
                 }
             } else {
+                // Ollama 格式
                 String[] lines = response.split("\n");
                 for (String line : lines) {
                     if (!line.trim().isEmpty()) {
