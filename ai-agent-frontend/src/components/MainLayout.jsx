@@ -4,7 +4,7 @@ import { MessageSquare, Calendar, LogOut, User, Dumbbell, Star, BarChart3, Setti
 import { useUser } from './UserContext';
 
 const MainLayout = () => {
-    const { user, logout } = useUser();
+    const { user, loading, logout } = useUser();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -27,10 +27,15 @@ const MainLayout = () => {
     };
 
     useEffect(() => {
+        if (loading) return; // 等待从本地恢复
         if (!user) {
             navigate('/login');
         }
-    }, [user, navigate]);
+    }, [user, loading, navigate]);
+
+    if (loading) {
+        return null; // 或者返回一个轻量的加载占位
+    }
 
     if (!user) {
         return null;

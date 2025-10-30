@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Login from './components/Login';
 import Register from './components/Register';
-import ChatInterface from './components/ChatInterface';
 import FitnessChatInterface from './components/FitnessChatInterface';
 import FitAIHomepage from './components/FitAIHomepage';
 import AIFitnessPlan from './components/AIFitnessPlan';
@@ -23,7 +22,8 @@ function App() {
                     <Route path="/" element={<MainLayout />}>
                         <Route index element={<Navigate to="/home" replace />} />
                         <Route path="home" element={<FitAIHomepage />} />
-                        <Route path="chat" element={<ChatInterface />} />
+                        {/* Remove /chat actual UI and redirect to /home if visited */}
+                        <Route path="chat" element={<Navigate to="/home" replace />} />
                         <Route path="ai-plan" element={<AIFitnessPlan />} />
                         <Route path="weekly-plan" element={<WeeklyPlan />} />
                         <Route path="training-log" element={<TrainingLog />} />

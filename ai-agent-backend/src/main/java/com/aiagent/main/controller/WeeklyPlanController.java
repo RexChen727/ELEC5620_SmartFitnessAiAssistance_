@@ -2,15 +2,16 @@ package com.aiagent.main.controller;
 
 import com.aiagent.main.entity.WeeklyPlan;
 import com.aiagent.main.entity.WeeklyPlanWorkout;
+import com.aiagent.main.entity.GymEquipment;
 import com.aiagent.main.service.WeeklyPlanService;
+import com.aiagent.main.service.GymEquipmentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/weekly-plan")
@@ -19,6 +20,9 @@ public class WeeklyPlanController {
 
     @Autowired
     private WeeklyPlanService weeklyPlanService;
+
+    @Autowired
+    private GymEquipmentService gymEquipmentService;
 
     /**
      * Generate a new weekly plan using AI
@@ -245,6 +249,92 @@ public class WeeklyPlanController {
         }
         dto.put("workoutCount", countByDay);
 
+        // Calculate muscle groups per day
+        Map<Integer, String> muscleGroupsByDay = calculateMuscleGroupsByDay(workoutsByDay);
+        dto.put("muscleGroupsByDay", muscleGroupsByDay);
+
         return dto;
+    }
+
+    /**
+     * Calculate the main muscle groups trained on each day
+     */
+    private Map<Integer, String> calculateMuscleGroupsByDay(Map<Integer, List<Map<String, Object>>> workoutsByDay) {
+        Map<Integer, String> muscleGroupsByDay = new HashMap<>();
+        
+        for (Map.Entry<Integer, List<Map<String, Object>>> entry : workoutsByDay.entrySet()) {
+            Integer dayIndex = entry.getKey();
+            List<Map<String, Object>> workouts = entry.getValue();
+            
+            Set<String> allMuscles = new HashSet<>();
+            
+            for (Map<String, Object> workout : workouts) {
+                String workoutName = (String) workout.get("workoutName");
+                if (workoutName != null && !workoutName.isEmpty()) {
+                    // Try to find matching equipment
+                    Optional<GymEquipment> equipmentOpt = gymEquipmentService.getEquipmentByName(workoutName);
+                    
+                    if (equipmentOpt.isPresent()) {
+                        String primaryMuscles = equipmentOpt.get().getPrimaryMuscles();
+                        if (primaryMuscles != null && !primaryMuscles.isEmpty()) {
+                            // Split by comma and add each muscle
+                            String[] muscles = primaryMuscles.split(",");
+                            for (String muscle : muscles) {
+                                String trimmed = muscle.trim();
+                                if (!trimmed.isEmpty()) {
+                                    allMuscles.add(trimmed);
+                                }
+                            }
+                        }
+                    } else {
+                        // Try to search by keyword in workout name (only take first match)
+                        List<GymEquipment> searchResults = gymEquipmentService.searchEquipment(workoutName);
+                        if (!searchResults.isEmpty()) {
+                            GymEquipment equipment = searchResults.get(0);
+                            String primaryMuscles = equipment.getPrimaryMuscles();
+                            if (primaryMuscles != null && !primaryMuscles.isEmpty()) {
+                                String[] muscles = primaryMuscles.split(",");
+                                for (String muscle : muscles) {
+                                    String trimmed = muscle.trim();
+                                    if (!trimmed.isEmpty()) {
+                                        allMuscles.add(trimmed);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Format muscles for display
+            if (!allMuscles.isEmpty()) {
+                // Get unique muscles and format nicely
+                List<String> sortedMuscles = new ArrayList<>(allMuscles);
+                Collections.sort(sortedMuscles);
+                
+                // Take first 3 most common or all if less than 3
+                String display = sortedMuscles.stream()
+                        .limit(3)
+                        .map(muscle -> {
+                            // Simplify muscle names for display
+                            if (muscle.contains("Chest")) return "Chest";
+                            if (muscle.contains("Back")) return "Back";
+                            if (muscle.contains("Leg")) return "Legs";
+                            if (muscle.contains("Shoulder")) return "Shoulders";
+                            if (muscle.contains("Arm") || muscle.contains("Bicep") || muscle.contains("Tricep")) return "Arms";
+                            if (muscle.contains("Core") || muscle.contains("Abs")) return "Core";
+                            if (muscle.contains("Cardiovascular")) return "Cardio";
+                            return muscle;
+                        })
+                        .distinct()
+                        .collect(Collectors.joining(", "));
+                
+                muscleGroupsByDay.put(dayIndex, display);
+            } else {
+                muscleGroupsByDay.put(dayIndex, "");
+            }
+        }
+        
+        return muscleGroupsByDay;
     }
 }
