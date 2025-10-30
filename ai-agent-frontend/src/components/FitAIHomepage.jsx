@@ -1,6 +1,7 @@
 import React from 'react';
 import { MessageCircle, Calendar, Dumbbell, BarChart3, Settings, Star, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import UserProfile from './UserProfile';
 
 const FitAIHomepage = () => {
     const navigate = useNavigate();
@@ -169,6 +170,11 @@ const FitAIHomepage = () => {
                             </div>
                         );
                     })}
+                </div>
+
+                {/* User Profile */}
+                <div className="mt-12">
+                    <UserProfile />
                 </div>
 
                 {/* Quick Stats Section */}
