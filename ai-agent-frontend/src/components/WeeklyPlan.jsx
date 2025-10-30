@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Dumbbell, Clock, Edit3, Plus, CheckCircle, Star, ArrowRight, BarChart3, MessageCircle, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Dumbbell, Clock, Edit3, Plus, CheckCircle, Star, ArrowRight, BarChart3, MessageCircle, Settings, ChevronLeft, ChevronRight, Send } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useUser } from './UserContext';
@@ -17,13 +17,106 @@ const WeeklyPlan = () => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [workoutsByDay, setWorkoutsByDay] = useState({});
+    const [muscleGroupsByDay, setMuscleGroupsByDay] = useState({});
     const [showCopyDialog, setShowCopyDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showAddWorkoutDialog, setShowAddWorkoutDialog] = useState(false);
     const [showEditWorkoutDialog, setShowEditWorkoutDialog] = useState(false);
     const [selectedWorkout, setSelectedWorkout] = useState(null);
 
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    // AI Coach chat state (ported from AIFitnessPlan)
+    const [messages, setMessages] = useState([
+        {
+            id: 1,
+            type: 'ai',
+            content: "Hi! I'm your AI fitness coach. Tell me about your fitness goals, available time, and preferences, and I'll create a personalized workout plan for you!",
+            timestamp: new Date()
+        }
+    ]);
+    const [inputMessage, setInputMessage] = useState('');
+    const [isThinking, setIsThinking] = useState(false);
+
+    const handleSendMessage = async () => {
+        if (!inputMessage.trim()) return;
+        const userMessage = {
+            id: messages.length + 1,
+            type: 'user',
+            content: inputMessage,
+            timestamp: new Date()
+        };
+        setMessages(prev => [...prev, userMessage]);
+        setInputMessage('');
+        setIsThinking(true);
+        // TODO: wire to backend later; keep mock for now
+        setTimeout(() => {
+            const aiResponse = {
+                id: Date.now(),
+                type: 'ai',
+                content: 'Got it! I will tailor suggestions to your schedule and goals.',
+                timestamp: new Date()
+            };
+            setMessages(prev => [...prev, aiResponse]);
+            setIsThinking(false);
+        }, 1200);
+    };
+
+    // Day labels will be generated from current window (leftmost = today)
+
+    // Week navigation state (UI only, decoupled from backend plan for now)
+    const [weekStart, setWeekStart] = useState(() => {
+        const d = new Date();
+        d.setHours(0,0,0,0);
+        return d; // today is the first day in the window
+    });
+    const [todayString, setTodayString] = useState(() => new Date().toDateString());
+
+    const addDays = (date, daysToAdd) => {
+        const nd = new Date(date);
+        nd.setDate(nd.getDate() + daysToAdd);
+        return nd;
+    };
+
+    const formatDayShort = (date) => {
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
+    const formatWeekRange = (start) => {
+        const end = addDays(start, 6);
+        const left = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const right = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `${left} - ${right}`;
+    };
+
+    const goPrevWeek = () => setWeekStart(prev => addDays(prev, -7));
+    const goNextWeek = () => setWeekStart(prev => addDays(prev, 7));
+
+    // Dynamic day labels for the 7-day window starting from weekStart
+    const dayLabels = Array.from({ length: 7 }, (_, i) =>
+        addDays(weekStart, i).toLocaleDateString('en-US', { weekday: 'long' })
+    );
+    // Keep compatibility with legacy references
+    const days = dayLabels;
+
+    // On mount: select leftmost (today)
+    useEffect(() => {
+        setSelectedDay(0);
+    }, []);
+
+    // Tick every 1 minute to sync with real time (跨天自动切换周与选中日)
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const now = new Date();
+            const nowStr = now.toDateString();
+            if (nowStr !== todayString) {
+                setTodayString(nowStr);
+                const start = new Date(now);
+                start.setHours(0,0,0,0);
+                setWeekStart(start);
+                setSelectedDay(0);
+            }
+        }, 60000);
+        return () => clearInterval(timer);
+    }, [todayString]);
 
     // Load all weekly plans
     useEffect(() => {
@@ -40,6 +133,7 @@ const WeeklyPlan = () => {
             setStartDate(selectedPlan.startDate);
             setEndDate(selectedPlan.endDate);
             setWorkoutsByDay(selectedPlan.workoutsByDay || {});
+            setMuscleGroupsByDay(selectedPlan.muscleGroupsByDay || {});
         }
     }, [selectedPlanIndex, allPlans]);
 
@@ -62,6 +156,7 @@ const WeeklyPlan = () => {
                 setStartDate(targetPlan.startDate);
                 setEndDate(targetPlan.endDate);
                 setWorkoutsByDay(targetPlan.workoutsByDay || {});
+                setMuscleGroupsByDay(targetPlan.muscleGroupsByDay || {});
             }
         } catch (error) {
             console.error('Error loading all plans:', error);
@@ -78,6 +173,7 @@ const WeeklyPlan = () => {
             setStartDate(plan.startDate);
             setEndDate(plan.endDate);
             setWorkoutsByDay(plan.workoutsByDay || {});
+            setMuscleGroupsByDay(plan.muscleGroupsByDay || {});
         } catch (error) {
             console.error('Error loading plan details:', error);
         }
@@ -323,6 +419,17 @@ const WeeklyPlan = () => {
         return workoutsByDay[String(dayIndex)]?.length || 0;
     };
 
+    const getMuscleGroupsForDay = (dayIndex) => {
+        // Try both string and number keys
+        const muscleGroups = muscleGroupsByDay[dayIndex] || muscleGroupsByDay[String(dayIndex)];
+        if (muscleGroups && muscleGroups.trim() !== '') {
+            return muscleGroups;
+        }
+        // Fallback: if no muscle groups found, show "Rest Day" or empty
+        const workoutCount = getWorkoutCount(dayIndex);
+        return workoutCount === 0 ? 'Rest Day' : '';
+    };
+
     const getWorkoutsForDay = (dayIndex) => {
         return workoutsByDay[String(dayIndex)] || [];
     };
@@ -418,12 +525,12 @@ const WeeklyPlan = () => {
             </nav>
 
             {/* Main Content */}
-            <div className="max-w-6xl mx-auto px-6 py-8">
+            <div className="max-w-6xl mx-auto px-6 py-4 min-h-[calc(100vh-120px)] flex flex-col">
                 {/* Week Overview */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-                    <div className="flex items-center justify-between mb-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+                    <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center space-x-4">
-                            <h2 className="text-2xl font-bold text-gray-900">Weekly Plan</h2>
+                            <h2 className="text-2xl font-bold text-gray-900">Current Schedule</h2>
                             
                             {/* Week Navigation */}
                             {allPlans.length > 1 && selectedPlanIndex !== null && (
@@ -449,26 +556,27 @@ const WeeklyPlan = () => {
                             )}
                         </div>
                         
-                        <div className="flex items-center space-x-4">
-                            {weeklyPlan && (
-                                <div className="text-sm text-gray-600">
-                                    <span className="font-semibold">Week of:</span> {formatDate(startDate)} - {formatDate(endDate)}
-                                </div>
-                            )}
-                            <button 
-                                onClick={handleClearDayClick}
-                                disabled={!weeklyPlan || workoutsByDay[String(selectedDay)]?.length === 0 || loading}
-                                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center space-x-2 disabled:bg-gray-400"
-                            >
-                                <Edit3 size={16} />
-                                <span>Clear Day's Plan</span>
+                        {/* Removed top-right Week of range per request */}
+                    </div>
+
+                    {/* Week header with navigation */}
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="text-sm text-gray-600">
+                            <span className="font-semibold">Week:</span> {formatWeekRange(weekStart)}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <button onClick={goPrevWeek} className="p-2 rounded-lg hover:bg-gray-100">
+                                <ChevronLeft size={18} />
+                            </button>
+                            <button onClick={goNextWeek} className="p-2 rounded-lg hover:bg-gray-100">
+                                <ChevronRight size={18} />
                             </button>
                         </div>
                     </div>
 
                     {/* Days Grid */}
-                    <div className="grid grid-cols-7 gap-4">
-                        {days.map((day, index) => (
+                    <div className="grid grid-cols-7 gap-3">
+                        {dayLabels.map((day, index) => (
                             <button
                                 key={index}
                                 onClick={() => setSelectedDay(index)}
@@ -485,7 +593,7 @@ const WeeklyPlan = () => {
                                         {day}
                                     </div>
                                     <div className="text-xs text-gray-500 mt-1">
-                                        {getWorkoutCount(index)} workouts
+                                        {formatDayShort(addDays(weekStart, index))}
                                     </div>
                                     {hasCompletedWorkout(index) && (
                                         <CheckCircle size={16} className="text-green-500 mx-auto mt-2" />
@@ -496,181 +604,139 @@ const WeeklyPlan = () => {
                     </div>
                 </div>
 
-                {/* Selected Day Details */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Workouts List */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-xl font-semibold text-gray-900">
-                                    {days[selectedDay]} Workouts
-                                </h3>
+                {/* Selected Day Details + AI Coach */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch content-stretch flex-1 mt-auto">
+                    {/* Workouts Column */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                {days[selectedDay]} Workouts
+                            </h3>
+                            <div className="flex items-center space-x-2">
+                                <button
+                                    onClick={handleClearDayClick}
+                                    disabled={!weeklyPlan || getWorkoutsForDay(selectedDay).length === 0 || loading}
+                                    className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:bg-gray-400 text-sm"
+                                >
+                                    <Edit3 size={14} />
+                                    <span>Clear Day's Plan</span>
+                                </button>
                                 <button
                                     onClick={handleAddWorkout}
                                     disabled={!weeklyPlan}
-                                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:bg-gray-400"
+                                    className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 text-sm"
                                 >
-                                    <Plus size={16} />
+                                    <Plus size={14} />
                                     <span>Add Workout</span>
                                 </button>
                             </div>
+                        </div>
 
-                            {getWorkoutsForDay(selectedDay).length > 0 ? (
-                                <div className="space-y-4">
-                                    {getWorkoutsForDay(selectedDay).map((workout) => (
-                                        <div
-                                            key={workout.id}
-                                            className={`p-4 rounded-lg border-2 transition-all ${
-                                                workout.completed
-                                                    ? 'border-green-200 bg-green-50'
-                                                    : 'border-gray-200 hover:border-gray-300'
-                                            }`}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center space-x-3">
-                                                    <Dumbbell size={20} className="text-gray-600" />
-                                                    <div>
-                                                        <h4 className="font-semibold text-gray-900">{workout.workoutName}</h4>
-                                                        <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                                                            {workout.sets && workout.reps && (
-                                                                <span>{workout.sets} sets × {workout.reps} reps</span>
-                                                            )}
-                                                            {workout.weight && <span>{workout.weight}</span>}
-                                                            {workout.duration && (
-                                                                <span className="flex items-center space-x-1">
-                                                                    <Clock size={14} />
-                                                                    <span>{workout.duration}</span>
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        {workout.notes && (
-                                                            <p className="text-xs text-gray-500 mt-1">{workout.notes}</p>
+                        <div className="flex-1 overflow-auto">
+                        {getWorkoutsForDay(selectedDay).length > 0 ? (
+                            <div className="space-y-3">
+                                {getWorkoutsForDay(selectedDay).map((workout) => (
+                                    <div
+                                        key={workout.id}
+                                        className={`p-4 rounded-lg border transition ${
+                                            workout.completed
+                                                ? 'border-green-200 bg-green-50'
+                                                : 'border-gray-200 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3">
+                                                <Dumbbell size={20} className="text-gray-600" />
+                                                <div>
+                                                    <h4 className="font-semibold text-gray-900">{workout.workoutName}</h4>
+                                                    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                                                        {workout.sets && workout.reps && (
+                                                            <span>{workout.sets} sets × {workout.reps} reps</span>
+                                                        )}
+                                                        {workout.weight && <span>{workout.weight}</span>}
+                                                        {workout.duration && (
+                                                            <span className="flex items-center space-x-1">
+                                                                <Clock size={14} />
+                                                                <span>{workout.duration}</span>
+                                                            </span>
                                                         )}
                                                     </div>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <button
-                                                        onClick={() => toggleWorkoutComplete(workout.id)}
-                                                        className={`p-2 rounded-lg transition-colors ${
-                                                            workout.completed
-                                                                ? 'bg-green-100 text-green-600'
-                                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                        }`}
-                                                    >
-                                                        <CheckCircle size={20} />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleEditWorkout(workout)}
-                                                        className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
-                                                    >
-                                                        <Edit3 size={16} />
-                                                    </button>
+                                                    {workout.notes && (
+                                                        <p className="text-xs text-gray-500 mt-1">{workout.notes}</p>
+                                                    )}
                                                 </div>
                                             </div>
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => toggleWorkoutComplete(workout.id)}
+                                                    className={`p-2 rounded-lg transition-colors ${
+                                                        workout.completed
+                                                            ? 'bg-green-100 text-green-600'
+                                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                    }`}
+                                                >
+                                                    <CheckCircle size={20} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleEditWorkout(workout)}
+                                                    className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                                                >
+                                                    <Edit3 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-12">
-                                    <Dumbbell size={48} className="text-gray-300 mx-auto mb-4" />
-                                    <h4 className="text-lg font-semibold text-gray-600 mb-2">No workouts scheduled</h4>
-                                    <p className="text-gray-500 mb-4">Click "Generate AI Plan" to create your weekly training schedule</p>
-                                    {!weeklyPlan && (
-                                        <button
-                                            onClick={handleGenerateClick}
-                                            disabled={loading}
-                                            className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2 mx-auto disabled:bg-gray-400"
-                                        >
-                                            {loading ? (
-                                                <>
-                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                                    <span>Generating...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Calendar size={16} />
-                                                    <span>Generate AI Plan</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    )}
-                                </div>
-                            )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-6 text-gray-500">No workouts scheduled</div>
+                        )}
                         </div>
                     </div>
 
-                    {/* Quick Actions */}
-                    <div className="space-y-6">
-                        {/* Progress */}
-                        {weeklyPlan && (
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Progress</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <div className="flex justify-between text-sm mb-1">
-                                            <span className="text-gray-600">Completed Workouts</span>
-                                            <span className="font-semibold">
-                                                {Object.values(workoutsByDay)
-                                                    .flat()
-                                                    .filter(w => w.completed).length}/{Object.values(workoutsByDay).flat().length}
-                                            </span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                            <div 
-                                                className="bg-green-500 h-2 rounded-full" 
-                                                style={{ 
-                                                    width: `${(Object.values(workoutsByDay).flat().filter(w => w.completed).length / Math.max(Object.values(workoutsByDay).flat().length, 1)) * 100}%` 
-                                                }}
-                                            ></div>
-                                        </div>
+                    {/* AI Coach Column (ported chat) */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col h-full">
+                        <div className="pb-3 border-b border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-900">AI Fitness Coach</h3>
+                            <p className="text-sm text-gray-600">Describe your goals and I'll create a personalized plan</p>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            {messages.map((message) => (
+                                <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[80%] p-3 rounded-lg ${message.type === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
+                                        <p className="text-sm">{message.content}</p>
+                                        <p className="text-xs opacity-70 mt-1">{message.timestamp.toLocaleTimeString()}</p>
                                     </div>
-                                    <div>
-                                        <div className="flex justify-between text-sm mb-1">
-                                            <span className="text-gray-600">Training Days</span>
-                                            <span className="font-semibold">
-                                                {Object.keys(workoutsByDay).length}/7
-                                            </span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                            <div 
-                                                className="bg-blue-500 h-2 rounded-full" 
-                                                style={{ 
-                                                    width: `${(Object.keys(workoutsByDay).length / 7) * 100}%` 
-                                                }}
-                                            ></div>
+                                </div>
+                            ))}
+                            {isThinking && (
+                                <div className="flex justify-start">
+                                    <div className="bg-gray-100 text-gray-900 p-3 rounded-lg">
+                                        <div className="flex items-center space-x-2">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                                            <span className="text-sm">AI is thinking...</span>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Quick Actions */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                            <div className="space-y-3">
-                                <button 
-                                    onClick={handleGenerateClick}
-                                    disabled={loading}
-                                    className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center space-x-3 disabled:bg-gray-100"
+                            )}
+                        </div>
+                        <div className="pt-3 border-t border-gray-200">
+                            <div className="flex space-x-2">
+                                <input
+                                    type="text"
+                                    value={inputMessage}
+                                    onChange={(e) => setInputMessage(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                                    placeholder="Describe your fitness goals..."
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                                />
+                                <button
+                                    onClick={handleSendMessage}
+                                    disabled={!inputMessage.trim() || isThinking}
+                                    className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                                 >
-                                    <Calendar size={16} className="text-blue-600" />
-                                    <span className="text-sm font-medium">Generate AI Plan</span>
-                                </button>
-                                <button 
-                                    onClick={handleCopyToNextWeek}
-                                    disabled={loading}
-                                    className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center space-x-3 disabled:bg-gray-100"
-                                >
-                                    <ArrowRight size={16} className="text-green-600" />
-                                    <span className="text-sm font-medium">Copy to Next Week</span>
-                                </button>
-                                <button 
-                                    onClick={handleDeleteClick}
-                                    disabled={!weeklyPlan || loading}
-                                    className="w-full text-left p-3 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center space-x-3 disabled:bg-gray-100"
-                                >
-                                    <Edit3 size={16} className="text-red-600" />
-                                    <span className="text-sm font-medium">Delete Current Weekly Plan</span>
+                                    <Send size={16} />
+                                    <span>Send</span>
                                 </button>
                             </div>
                         </div>

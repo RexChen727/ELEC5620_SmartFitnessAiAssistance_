@@ -12,6 +12,7 @@ export const useUser = () => {
 
 export const UserProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     // 从localStorage恢复用户状态
     useEffect(() => {
@@ -24,6 +25,7 @@ export const UserProvider = ({ children }) => {
                 localStorage.removeItem('user');
             }
         }
+        setLoading(false);
     }, []);
 
     const login = (userData) => {
@@ -38,6 +40,7 @@ export const UserProvider = ({ children }) => {
 
     const value = {
         user,
+        loading,
         login,
         logout
     };
