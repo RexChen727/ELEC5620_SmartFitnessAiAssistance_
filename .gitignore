@@ -1,0 +1,25 @@
+# Node / frontend
+node_modules/
+**/node_modules/
+*.log
+.DS_Store
+
+# Java / Gradle
+**/build/
+.gradle/
+**/.gradle/
+*.iml
+.idea/
+
+# Env / secrets
+**/application.properties
+**/.env
+.env
+
+# OS / editors
+.vscode/
+.cursor/
+.history
+.DS_Store
+
+
