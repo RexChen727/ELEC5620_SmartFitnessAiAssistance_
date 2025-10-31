@@ -1,24 +1,64 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Dumbbell, Clock, Edit3, Trash2, Plus, Calendar, Star, ArrowRight, BarChart3, MessageCircle, Settings } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Dumbbell, Clock, Edit3, Trash2, Plus, Calendar, Star, ArrowRight, BarChart3, MessageCircle, Settings, X, LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from './UserContext';
 
 const TrainingLog = () => {
     const navigate = useNavigate();
+    const { user, logout } = useUser();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [workoutData, setWorkoutData] = useState({});
+    const [loading, setLoading] = useState(false);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [newLog, setNewLog] = useState({
+        exercise: '',
+        sets: '',
+        reps: '',
+        weight: '',
+        rest: '',
+        duration: '',
+        notes: ''
+    });
 
-    // Sample workout data
-    const workoutData = {
-        '2024-12-23': [
-            { id: 1, name: 'Bench Press', sets: 3, reps: 8, weight: '135 lbs', restTime: '2 min', duration: '45 min', notes: 'Felt strong today' },
-            { id: 2, name: 'Pull-ups', sets: 3, reps: 10, weight: 'Bodyweight', restTime: '1 min', duration: '30 min', notes: '' }
-        ],
-        '2024-12-21': [
-            { id: 3, name: 'Squats', sets: 4, reps: 12, weight: '185 lbs', restTime: '2 min', duration: '50 min', notes: 'Good form' }
-        ],
-        '2024-12-19': [
-            { id: 4, name: 'Deadlifts', sets: 3, reps: 5, weight: '225 lbs', restTime: '3 min', duration: '40 min', notes: 'PR!' }
-        ]
+    // Fetch workout data from backend
+    useEffect(() => {
+        if (user && user.id) {
+            fetchWorkoutData();
+        }
+    }, [user]);
+
+    const fetchWorkoutData = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/training-log/user/${user.id}`);
+            if (response.ok) {
+                const logs = await response.json();
+                // Group logs by date
+                const groupedLogs = {};
+                logs.forEach(log => {
+                    const dateKey = log.workoutDate;
+                    if (!groupedLogs[dateKey]) {
+                        groupedLogs[dateKey] = [];
+                    }
+                    groupedLogs[dateKey].push({
+                        id: log.id,
+                        name: log.exerciseName,
+                        sets: log.sets,
+                        reps: log.reps,
+                        weight: log.weight ? `${log.weight} ${log.weightUnit || 'lbs'}` : 'Bodyweight',
+                        restTime: log.restSeconds ? `${log.restSeconds}s` : '',
+                        duration: log.durationMinutes ? `${log.durationMinutes} min` : '',
+                        notes: log.notes || ''
+                    });
+                });
+                setWorkoutData(groupedLogs);
+            }
+        } catch (error) {
+            console.error('Error fetching workout data:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const getDaysInMonth = (date) => {
@@ -85,12 +125,74 @@ const TrainingLog = () => {
         return workoutData[dateKey] || [];
     };
 
-    const deleteWorkout = (workoutId) => {
-        console.log('Delete workout:', workoutId);
+    const deleteWorkout = async (workoutId) => {
+        try {
+            const response = await fetch(`/api/training-log/${workoutId}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                await fetchWorkoutData();
+            }
+        } catch (error) {
+            console.error('Error deleting workout:', error);
+        }
     };
 
     const addWorkout = () => {
-        console.log('Add workout for:', selectedDate);
+        setIsDialogOpen(true);
+    };
+
+    const handleSaveWorkout = async () => {
+        if (!newLog.exercise || !newLog.sets || !newLog.reps) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        try {
+            const workoutDate = formatDateKey(selectedDate);
+            const trainingLog = {
+                user: { id: user.id },
+                workoutDate: workoutDate,
+                exerciseName: newLog.exercise,
+                sets: parseInt(newLog.sets),
+                reps: parseInt(newLog.reps),
+                weight: newLog.weight ? parseFloat(newLog.weight) : null,
+                weightUnit: 'lbs',
+                restSeconds: newLog.rest ? parseInt(newLog.rest) : null,
+                durationMinutes: newLog.duration ? parseInt(newLog.duration) : null,
+                notes: newLog.notes || null
+            };
+
+            const response = await fetch('/api/training-log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(trainingLog)
+            });
+
+            if (response.ok) {
+                setNewLog({
+                    exercise: '',
+                    sets: '',
+                    reps: '',
+                    weight: '',
+                    rest: '',
+                    duration: '',
+                    notes: ''
+                });
+                setIsDialogOpen(false);
+                await fetchWorkoutData();
+            }
+        } catch (error) {
+            console.error('Error saving workout:', error);
+            alert('Failed to save workout');
+        }
+    };
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
     };
 
     const days = getDaysInMonth(currentDate);
@@ -161,7 +263,7 @@ const TrainingLog = () => {
                         </button>
                     </div>
 
-                    {/* AI Assistant */}
+                    {/* AI Assistant & User Info */}
                     <div className="flex items-center space-x-3">
                         <button className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
                             <MessageCircle size={18} />
@@ -170,6 +272,18 @@ const TrainingLog = () => {
                         <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
                             <span className="text-xs font-bold text-white">1</span>
                         </div>
+                        <div className="w-px h-6 bg-gray-300"></div>
+                        <div className="flex items-center space-x-2 text-gray-600">
+                            <User size={16} />
+                            <span className="text-sm font-medium">{user?.username || 'User'}</span>
+                        </div>
+                        <button 
+                            onClick={handleLogout}
+                            className="flex items-center space-x-1 px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                            <LogOut size={16} />
+                            <span>Logout</span>
+                        </button>
                     </div>
                 </div>
             </nav>
@@ -247,9 +361,9 @@ const TrainingLog = () => {
                 </div>
 
                 {/* Selected Date Workouts */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="w-full">
                     {/* Workouts List */}
-                    <div className="lg:col-span-2">
+                    <div className="w-full">
                         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-xl font-semibold text-gray-900">
@@ -332,53 +446,146 @@ const TrainingLog = () => {
                             )}
                         </div>
                     </div>
-
-                    {/* Quick Stats */}
-                    <div className="space-y-6">
-                        {/* Monthly Stats */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">This Month</h3>
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-600">Total Workouts</span>
-                                    <span className="text-lg font-bold text-purple-600">12</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-600">Total Minutes</span>
-                                    <span className="text-lg font-bold text-blue-600">540</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-600">Calories Burned</span>
-                                    <span className="text-lg font-bold text-green-600">2,160</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-600">Current Streak</span>
-                                    <span className="text-lg font-bold text-orange-600">5 days</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Quick Actions */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                            <div className="space-y-3">
-                                <button className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center space-x-3">
-                                    <Calendar size={16} className="text-blue-600" />
-                                    <span className="text-sm font-medium">View Weekly Plan</span>
-                                </button>
-                                <button className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors flex items-center space-x-3">
-                                    <ArrowRight size={16} className="text-green-600" />
-                                    <span className="text-sm font-medium">Export Data</span>
-                                </button>
-                                <button className="w-full text-left p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors flex items-center space-x-3">
-                                    <Edit3 size={16} className="text-purple-600" />
-                                    <span className="text-sm font-medium">Bulk Edit</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
+
+            {/* Add Workout Dialog */}
+            {isDialogOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <h3 className="text-xl font-bold text-gray-900">Log Workout</h3>
+                            <button
+                                onClick={() => setIsDialogOpen(false)}
+                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={(e) => { e.preventDefault(); handleSaveWorkout(); }} className="p-6">
+                            <div className="mb-6 p-3 bg-purple-50 rounded-lg">
+                                <p className="text-sm text-purple-600 font-semibold">
+                                    Date: <span className="text-purple-800">{selectedDate.toLocaleDateString()}</span>
+                                </p>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Exercise Name <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newLog.exercise}
+                                    onChange={(e) => setNewLog({ ...newLog, exercise: e.target.value })}
+                                    placeholder="e.g., Bench Press"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Sets <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={newLog.sets}
+                                        onChange={(e) => setNewLog({ ...newLog, sets: e.target.value })}
+                                        placeholder="3"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Reps <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={newLog.reps}
+                                        onChange={(e) => setNewLog({ ...newLog, reps: e.target.value })}
+                                        placeholder="10"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Weight (lbs)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={newLog.weight}
+                                        onChange={(e) => setNewLog({ ...newLog, weight: e.target.value })}
+                                        placeholder="135"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Rest (seconds)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={newLog.rest}
+                                        onChange={(e) => setNewLog({ ...newLog, rest: e.target.value })}
+                                        placeholder="60"
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Duration (minutes)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={newLog.duration}
+                                    onChange={(e) => setNewLog({ ...newLog, duration: e.target.value })}
+                                    placeholder="45"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                />
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Notes
+                                </label>
+                                <textarea
+                                    value={newLog.notes}
+                                    onChange={(e) => setNewLog({ ...newLog, notes: e.target.value })}
+                                    placeholder="How did it feel?"
+                                    rows="3"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsDialogOpen(false)}
+                                    className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Saving...' : 'Save Workout'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
