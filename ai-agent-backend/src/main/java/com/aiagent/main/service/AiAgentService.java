@@ -145,24 +145,29 @@ public class AiAgentService {
         if (aiModelBaseUrl.contains("generativelanguage.googleapis.com")) {
             // Gemini API 格式
             url = aiModelBaseUrl + "/" + aiModelName + ":generateContent";
-            
+
             // Gemini 使用 X-goog-api-key header
             headers.set("X-goog-api-key", aiModelApiKey);
-            
+
             Map<String, Object> content = new HashMap<>();
             content.put("parts", Collections.singletonList(Map.of("text", prompt)));
-            
+
             requestBody.put("contents", Collections.singletonList(content));
         } else {
             // OpenAI/Ollama 格式
             requestBody.put("model", aiModelName);
             requestBody.put("messages", Collections.singletonList(Map.of("role", "user", "content", prompt)));
-            
+
             if (aiModelApiKey != null && !aiModelApiKey.isEmpty()) {
                 headers.set("Authorization", "Bearer " + aiModelApiKey);
             }
-            
-            url = aiModelBaseUrl + "/chat";
+
+            // 判断是否是 Ollama (localhost:11434)
+            if (aiModelBaseUrl.contains("localhost:11434") || aiModelBaseUrl.contains("127.0.0.1:11434")) {
+                url = aiModelBaseUrl + "/api/chat";
+            } else {
+                url = aiModelBaseUrl + "/chat";
+            }
         }
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
@@ -202,6 +207,12 @@ public class AiAgentService {
                     if (firstChoice.has("message") && firstChoice.get("message").has("content")) {
                         fullResponse.append(firstChoice.get("message").get("content").asText());
                     }
+                }
+            } else if (jsonNode.has("message") && !response.contains("\n")) {
+                // Ollama格式的非流式响应（单个JSON对象）
+                JsonNode message = jsonNode.get("message");
+                if (message.has("content")) {
+                    fullResponse.append(message.get("content").asText());
                 }
             } else {
                 // Ollama格式的流式响应
