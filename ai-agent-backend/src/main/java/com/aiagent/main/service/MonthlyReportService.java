@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -23,8 +24,11 @@ public class MonthlyReportService {
     @Autowired
     private TrainingLogRepository trainingLogRepository;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
+
+    public MonthlyReportService(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     public List<MonthlyReport> getReportsByUserId(Long userId) {
         return monthlyReportRepository.findByUserIdOrderByReportMonthDesc(userId);
@@ -93,6 +97,7 @@ public class MonthlyReportService {
     /**
      * Generate monthly report from TrainingLog data for a specific month
      */
+    @Transactional(readOnly = true)
     public MonthlyReport generateMonthlyReportFromTrainingLogs(Long userId, LocalDate reportMonth) {
         LocalDate monthStart = reportMonth.withDayOfMonth(1);
         LocalDate monthEnd = monthStart.plusMonths(1).minusDays(1);

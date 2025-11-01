@@ -173,7 +173,11 @@ public class MonthlyReportController {
             MonthlyReport report = monthlyReportService.generateMonthlyReportFromTrainingLogs(userId, reportMonth);
             return ResponseEntity.ok(report);
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(e.getMessage());
+            e.printStackTrace();
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("details", e.getClass().getSimpleName());
+            return ResponseEntity.status(500).body(error);
         }
     }
 
