@@ -32,12 +32,19 @@ public class AiAgentController {
     public ResponseEntity<ChatResponse> chat(
             @Parameter(description = "Type of AI agent (general, coding, creative, analytical)")
             @PathVariable String agentType,
-            @RequestBody ChatRequest request) {
+            @RequestBody ChatRequest request,
+            @RequestParam(required = false) Long userId) {
         
-        log.info("Received chat request for agent type: {}, message: {}", agentType, request.getMessage());
+        log.info("Received chat request for agent type: {}, message: {}, userId: {}", agentType, request.getMessage(), userId);
         
         try {
-            ChatResponse response = aiAgentService.chat(agentType, request.getMessage(), request.getConversationId());
+            ChatResponse response;
+            if (userId != null) {
+                response = aiAgentService.chat(agentType, request.getMessage(), request.getConversationId(), userId);
+            } else {
+                // Fallback for backward compatibility
+                response = aiAgentService.chat(agentType, request.getMessage(), request.getConversationId());
+            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error processing chat request", e);
