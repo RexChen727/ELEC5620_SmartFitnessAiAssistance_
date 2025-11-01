@@ -717,17 +717,45 @@ public class WeeklyPlanService {
 
     /**
      * Add a new workout to a plan with user verification
+     * If planId is not provided or null, automatically get or create current week's plan
      */
     public WeeklyPlanWorkout addWorkout(Map<String, Object> workoutData, Long userId) {
         try {
-            // Get plan ID and validate
-            Long planId = Long.parseLong(workoutData.get("planId").toString());
-            WeeklyPlan plan = weeklyPlanRepository.findById(planId)
-                    .orElseThrow(() -> new RuntimeException("Plan not found"));
+            WeeklyPlan plan;
+            
+            // Check if planId is provided
+            if (workoutData.get("planId") != null && !workoutData.get("planId").toString().isEmpty()) {
+                // Use provided planId
+                Long planId = Long.parseLong(workoutData.get("planId").toString());
+                plan = weeklyPlanRepository.findById(planId)
+                        .orElseThrow(() -> new RuntimeException("Plan not found"));
 
-            // Verify the plan belongs to the user
-            if (!plan.getUser().getId().equals(userId)) {
-                throw new RuntimeException("Plan does not belong to this user");
+                // Verify the plan belongs to the user
+                if (!plan.getUser().getId().equals(userId)) {
+                    throw new RuntimeException("Plan does not belong to this user");
+                }
+            } else {
+                // No planId provided, get or create current week's plan
+                User user = userService.findById(userId)
+                        .orElseThrow(() -> new RuntimeException("User not found"));
+                
+                LocalDate today = LocalDate.now();
+                Optional<WeeklyPlan> existingPlan = weeklyPlanRepository.findCurrentPlan(userId, today);
+                
+                if (existingPlan.isPresent()) {
+                    plan = existingPlan.get();
+                } else {
+                    // Create a new empty plan for current week
+                    LocalDate monday = today.minusDays((today.getDayOfWeek().getValue() - 1) % 7);
+                    LocalDate sunday = monday.plusDays(6);
+                    
+                    plan = new WeeklyPlan();
+                    plan.setUser(user);
+                    plan.setStartDate(monday);
+                    plan.setEndDate(sunday);
+                    plan = weeklyPlanRepository.save(plan);
+                    log.info("Created new weekly plan {} for user {} to add workout", plan.getId(), userId);
+                }
             }
 
             // Create new workout
@@ -756,7 +784,7 @@ public class WeeklyPlanService {
 
             // Save workout
             WeeklyPlanWorkout savedWorkout = weeklyPlanWorkoutRepository.save(workout);
-            log.info("Added workout {} to plan {}", savedWorkout.getId(), planId);
+            log.info("Added workout {} to plan {}", savedWorkout.getId(), plan.getId());
 
             return savedWorkout;
         } catch (Exception e) {
