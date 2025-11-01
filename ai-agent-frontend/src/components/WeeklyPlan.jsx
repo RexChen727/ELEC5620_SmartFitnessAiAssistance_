@@ -1,8 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Dumbbell, Clock, Edit3, Plus, CheckCircle, Star, ArrowRight, BarChart3, MessageCircle, Settings, ChevronLeft, ChevronRight, Send, LogOut, User } from 'lucide-react';
-=======
-
 import { useNavigate } from 'react-router-dom';
 import { useUser } from './UserContext';
 import AddWorkoutDialog from './AddWorkoutDialog';
@@ -309,58 +307,57 @@ const WeeklyPlan = () => {
                             </div>
                         </div>
 
-                        {/* Navigation Items */}
-                        <div className="flex items-center space-x-1">
-                            <button
-                                onClick={() => navigate('/home')}
-                                className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                            >
-                                <Star size={18} />
-                                <span className="text-sm font-medium">Home</span>
-                            </button>
-                            <button
-                                onClick={() => navigate('/ai-plan')}
-                                className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                            >
-                                <Star size={18} />
-                                <span className="text-sm font-medium">AI Fitness Plan</span>
-                            </button>
-                            <button
-                                onClick={() => navigate('/weekly-plan')}
-                                className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors bg-purple-100 text-purple-700 border border-purple-200"
-                            >
-                                <Calendar size={18} />
-                                <span className="text-sm font-medium">Weekly Plan</span>
-                            </button>
-                            <button
-                                onClick={() => navigate('/training-log')}
-                                className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                            >
-                                <Dumbbell size={18} />
-                                <span className="text-sm font-medium">Training Log</span>
-                            </button>
-                            <button
-                                onClick={() => navigate('/monthly-report')}
-                                className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                            >
-                                <BarChart3 size={18} />
-                                <span className="text-sm font-medium">Monthly Report</span>
-                            </button>
-                            <button
-                                onClick={() => navigate('/substitute')}
-                                className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                            >
-                                <Settings size={18} />
-                                <span className="text-sm font-medium">Substitute</span>
-                            </button>
-                        </div>
+                    {/* Navigation Items */}
+                    <div className="flex items-center space-x-1">
+                        <button
+                            onClick={() => navigate('/home')}
+                            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                        >
+                            <Star size={18} />
+                            <span className="text-sm font-medium">Home</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/ai-plan')}
+                            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                        >
+                            <Star size={18} />
+                            <span className="text-sm font-medium">AI Fitness Plan</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/weekly-plan')}
+                            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors bg-purple-100 text-purple-700 border border-purple-200"
+                        >
+                            <Calendar size={18} />
+                            <span className="text-sm font-medium">Weekly Plan</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/training-log')}
+                            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                        >
+                            <Dumbbell size={18} />
+                            <span className="text-sm font-medium">Training Log</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/monthly-report')}
+                            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                        >
+                            <BarChart3 size={18} />
+                            <span className="text-sm font-medium">Monthly Report</span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/substitute')}
+                            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                        >
+                            <Settings size={18} />
+                            <span className="text-sm font-medium">Substitute</span>
+                        </button>
+                    </div>
 
                     {/* User Info and Actions */}
                     <div className="flex items-center space-x-3">
                         <div className="flex items-center space-x-2 text-sm text-gray-700">
                             <User size={16} />
                             <span>{user?.username || 'User'}</span>
-
                         </div>
                         <button
                             onClick={handleLogout}
@@ -371,7 +368,8 @@ const WeeklyPlan = () => {
                         </button>
                     </div>
                 </div>
-            </nav>
+            </div>
+        </nav>
 
             {/* Main Content */}
             <div className="max-w-6xl mx-auto px-6 py-4 min-h-[calc(100vh-120px)] flex flex-col">
