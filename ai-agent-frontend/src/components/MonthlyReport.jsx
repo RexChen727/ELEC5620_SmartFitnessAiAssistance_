@@ -1,11 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BarChart3, TrendingUp, Calendar, Download, Star, MessageCircle, Target, Zap, Award, Settings, Dumbbell } from 'lucide-react';
+import { BarChart3, TrendingUp, Calendar, Download, Star, MessageCircle, Target, Zap, Award, Settings, Dumbbell, LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from './UserContext';
 
 const MonthlyReport = () => {
     const navigate = useNavigate();
-    const { user } = useUser();
+    const { user, logout } = useUser();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
 
     const [loading, setLoading] = useState(true);
     const [reportId, setReportId] = useState(null);
@@ -234,15 +239,19 @@ const MonthlyReport = () => {
                         </button>
                     </div>
 
-                    {/* AI Assistant */}
+                    {/* User Info and Actions */}
                     <div className="flex items-center space-x-3">
-                        <button className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
-                            <MessageCircle size={18} />
-                            <span className="text-sm font-medium">AI Assistant</span>
-                        </button>
-                        <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                            <span className="text-xs font-bold text-white">1</span>
+                        <div className="flex items-center space-x-2 text-sm text-gray-700">
+                            <User size={16} />
+                            <span>{user?.username || 'User'}</span>
                         </div>
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                        >
+                            <LogOut size={18} />
+                            <span className="text-sm font-medium">Logout</span>
+                        </button>
                     </div>
                 </div>
             </nav>

@@ -1,10 +1,17 @@
 import React from 'react';
-import { MessageCircle, Calendar, Dumbbell, BarChart3, Settings, Star, ArrowRight } from 'lucide-react';
+import { MessageCircle, Calendar, Dumbbell, BarChart3, Settings, Star, ArrowRight, LogOut, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import UserProfile from './UserProfile';
+import { useUser } from './UserContext';
 
 const FitAIHomepage = () => {
     const navigate = useNavigate();
+    const { user, logout } = useUser();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
 
     const moduleCards = [
         {
@@ -103,15 +110,19 @@ const FitAIHomepage = () => {
                         </button>
                     </div>
 
-                    {/* AI Assistant */}
+                    {/* User Info and Actions */}
                     <div className="flex items-center space-x-3">
-                        <button className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
-                            <MessageCircle size={18} />
-                            <span className="text-sm font-medium">AI Assistant</span>
-                        </button>
-                        <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                            <span className="text-xs font-bold text-white">1</span>
+                        <div className="flex items-center space-x-2 text-sm text-gray-700">
+                            <User size={16} />
+                            <span>{user?.username || 'User'}</span>
                         </div>
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                        >
+                            <LogOut size={18} />
+                            <span className="text-sm font-medium">Logout</span>
+                        </button>
                     </div>
                 </div>
             </nav>

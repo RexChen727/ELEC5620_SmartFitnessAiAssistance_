@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, ArrowRight, CheckCircle, AlertCircle, Info, Loader, MessageCircle, X, Send, Search, Lightbulb, Star, Home, Calendar, BarChart3, Settings } from 'lucide-react';
+import { Dumbbell, ArrowRight, CheckCircle, AlertCircle, Info, Loader, MessageCircle, X, Send, Search, Lightbulb, Star, Home, Calendar, BarChart3, Settings, LogOut, User } from 'lucide-react';
 import { useUser } from './UserContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -7,6 +7,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 const NavigationBar = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { user, logout } = useUser();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
     
     const navigationItems = [
         { path: '/home', icon: Home, label: 'Home', key: 'home' },
@@ -56,15 +62,19 @@ const NavigationBar = () => {
                     })}
                 </div>
 
-                {/* AI Assistant */}
+                {/* User Info and Actions */}
                 <div className="flex items-center space-x-3">
-                    <button className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
-                        <MessageCircle size={18} />
-                        <span className="text-sm font-medium">AI Assistant</span>
-                    </button>
-                    <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
-                        <span className="text-xs font-bold text-white">1</span>
+                    <div className="flex items-center space-x-2 text-sm text-gray-700">
+                        <User size={16} />
+                        <span>{user?.username || 'User'}</span>
                     </div>
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    >
+                        <LogOut size={18} />
+                        <span className="text-sm font-medium">Logout</span>
+                    </button>
                 </div>
             </div>
         </nav>
