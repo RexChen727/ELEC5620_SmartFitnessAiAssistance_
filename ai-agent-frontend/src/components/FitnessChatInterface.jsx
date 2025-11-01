@@ -285,6 +285,8 @@ const TrainingQuestionWindow = ({ isOpen, onClose }) => {
     const [loading, setLoading] = useState(false);
     const [conversationId, setConversationId] = useState(null);
 
+    const { user } = useUser();
+    
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!question.trim()) return;
@@ -298,7 +300,8 @@ const TrainingQuestionWindow = ({ isOpen, onClose }) => {
                 },
                 body: JSON.stringify({
                     message: `Training Question Consultation: ${question}`,
-                    conversationId: conversationId
+                    conversationId: conversationId,
+                    userId: user?.id || null
                 }),
             });
 
@@ -428,6 +431,7 @@ const FitnessChatInterface = () => {
     const [alternatives, setAlternatives] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isQuestionWindowOpen, setIsQuestionWindowOpen] = useState(false);
+    const [conversationId, setConversationId] = useState(null);
 
     useEffect(() => {
         if (!user) {
@@ -495,7 +499,8 @@ const FitnessChatInterface = () => {
                 },
                 body: JSON.stringify({
                     message: `${equipment.name} is occupied, please provide detailed recommendations for each alternative exercise separately, format as follows:\n\n1. [Alternative Exercise Name]\n   - Sets/Reps: [Specific recommendations]\n   - Weight Recommendation: [Specific recommendations]\n   - Technique: [Detailed instructions]\n   - Precautions: [Safety reminders]\n   - Training Effect Comparison: [Differences from original equipment]\n\n2. [Next Alternative Exercise Name]\n   - Sets/Reps: [Specific recommendations]\n   - Weight Recommendation: [Specific recommendations]\n   - Technique: [Detailed instructions]\n   - Precautions: [Safety reminders]\n   - Training Effect Comparison: [Differences from original equipment]\n\nPlease provide complete independent information for each alternative exercise.`,
-                    conversationId: null
+                    conversationId: conversationId,
+                    userId: user?.id || null
                 }),
             });
 
@@ -503,6 +508,9 @@ const FitnessChatInterface = () => {
                 const data = await response.json();
                 const alternatives = parseDetailedAlternatives(data.response, equipment);
                 setAlternatives(alternatives);
+                if (data.conversationId && !conversationId) {
+                    setConversationId(data.conversationId);
+                }
             } else {
                 setAlternatives([]);
             }

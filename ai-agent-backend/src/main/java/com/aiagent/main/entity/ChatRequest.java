@@ -11,10 +11,13 @@ import lombok.NoArgsConstructor;
 public class ChatRequest {
     @JsonProperty("message")
     private String message;
-    
+
     @JsonProperty("conversationId")
     private Long conversationId;
-    
+
     @JsonProperty("agentType")
     private String agentType;
+
+    @JsonProperty("userId")
+    private Long userId;
 }

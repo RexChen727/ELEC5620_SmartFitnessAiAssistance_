@@ -38,7 +38,8 @@ public class FitnessController {
         log.info("Received fitness chat request: {}", request.getMessage());
 
         try {
-            ChatResponse response = aiAgentService.chat("fitness", request.getMessage(), request.getConversationId());
+            ChatResponse response = aiAgentService.chat("fitness", request.getMessage(), request.getConversationId(),
+                    request.getUserId());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error processing fitness chat request", e);
