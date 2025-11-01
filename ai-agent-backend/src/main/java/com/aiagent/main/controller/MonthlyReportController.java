@@ -55,17 +55,14 @@ public class MonthlyReportController {
     public ResponseEntity<?> getMonthlyReportByUserAndMonth(
             @PathVariable Long userId,
             @PathVariable Integer year,
-            @PathVariable Integer month) {
+            @PathVariable Integer month,
+            @RequestParam(required = false, defaultValue = "true") Boolean refresh) {
         try {
             LocalDate reportMonth = LocalDate.of(year, month, 1);
-            Optional<MonthlyReport> report = monthlyReportService.getReportByUserIdAndMonth(userId, reportMonth);
             
-            if (report.isPresent()) {
-                return ResponseEntity.ok(report.get());
-            } else {
-                Map<String, Object> defaultReport = createDefaultReport(userId, reportMonth);
-                return ResponseEntity.ok(defaultReport);
-            }
+            // Always regenerate from TrainingLog to ensure data is up-to-date
+            MonthlyReport generatedReport = monthlyReportService.generateMonthlyReportFromTrainingLogs(userId, reportMonth);
+            return ResponseEntity.ok(generatedReport);
         } catch (Exception e) {
             return ResponseEntity.status(500).build();
         }
@@ -163,6 +160,20 @@ public class MonthlyReportController {
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             return ResponseEntity.status(500).build();
+        }
+    }
+
+    @PostMapping("/generate/user/{userId}/month/{year}/{month}")
+    public ResponseEntity<?> generateReportFromTrainingLogs(
+            @PathVariable Long userId,
+            @PathVariable Integer year,
+            @PathVariable Integer month) {
+        try {
+            LocalDate reportMonth = LocalDate.of(year, month, 1);
+            MonthlyReport report = monthlyReportService.generateMonthlyReportFromTrainingLogs(userId, reportMonth);
+            return ResponseEntity.ok(report);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(e.getMessage());
         }
     }
 
