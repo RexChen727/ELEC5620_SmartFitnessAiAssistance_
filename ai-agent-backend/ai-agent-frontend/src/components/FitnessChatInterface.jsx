@@ -76,8 +76,8 @@ const ExerciseSubstitutionCard = ({ onSearch, onPopularClick, loading }) => {
     const [searchTerm, setSearchTerm] = useState('');
     
     const popularExercises = [
-        'Barbell Bench Press', 'Barbell Squats', 'Barbell Rows', 'Pull-up Bar', 
-        'Barbell Shoulder Press', 'Leg Press Machine', 'Barbell Curls', 'Dips'
+        'Bench Press', 'Squats', 'Deadlifts', 'Pull-ups', 
+        'Shoulder Press', 'Rows', 'Lunges', 'Planks'
     ];
 
     const handleSearch = () => {
