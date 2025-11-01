@@ -40,15 +40,42 @@ export const aiAgentService = {
      * Build intelligent intent-recognition prompt
      * AI directly returns complete workouts array
      */
-    buildIntentPrompt(userMessage, dayIndex, dayName) {
+    buildIntentPrompt(userMessage, dayIndex, dayName, weekDates = null) {
+        // 获取实际的今天日期
+        const actualToday = new Date();
+        actualToday.setHours(0, 0, 0, 0);
+        const todayStr = actualToday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        
+        // 构建周日期信息字符串
+        let weekInfo = '';
+        let todayDayIndex = null;
+        if (weekDates && weekDates.length === 7) {
+            const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const weekInfoList = weekDates.map((date, idx) => {
+                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const isTodayDate = date.getTime() === actualToday.getTime();
+                if (isTodayDate) {
+                    todayDayIndex = idx;
+                }
+                return `  ${dayNames[idx]} (${dateStr})${isTodayDate ? ' ← TODAY' : ''} - dayIndex: ${idx}`;
+            }).join('\n');
+            weekInfo = `\nCurrent week dates:\n${weekInfoList}`;
+            if (todayDayIndex !== null) {
+                weekInfo += `\n**IMPORTANT**: TODAY is ${dayNames[todayDayIndex]} (${todayStr}) with dayIndex: ${todayDayIndex}`;
+            }
+        }
+
         return `
 You are an intelligent AI fitness assistant that generates structured workout data for a gym app.
 
 User message: """${userMessage}"""
-Current day: ${dayName} (dayIndex: ${dayIndex})
+Currently selected day: ${dayName} (dayIndex: ${dayIndex})
+**ACTUAL TODAY**: ${todayStr}${todayDayIndex !== null ? ` (dayIndex: ${todayDayIndex})` : ''}${weekInfo}
 
 Your job:
 - Understand whether the message is an ACTION command or general conversation.
+- **IMPORTANT**: If the user mentions a specific day (e.g. "Monday", "Tuesday", "明天", "周五", "Friday"), extract it from the message and use the corresponding dayIndex from the week dates above.
+- If no day is mentioned, use the currently selected dayIndex: ${dayIndex}.
 - If ACTION, return detailed workout JSON strictly following the schema below.
 
 ---
@@ -60,7 +87,7 @@ Your job:
   "isAction": true,
   "action": "add_workout" | "remove_workout" | "clear_day" | "update_workout" | "mark_complete",
   "parameters": {
-    "dayIndex": ${dayIndex},
+    "dayIndex": <extracted_dayIndex_or_default_${dayIndex}>,
     "muscleGroup": "legs" | "chest" | "back" | "shoulders" | "arms" | "core" | null,
     "intensity": "light" | "medium" | "hard" | null,
     "workouts": [
@@ -88,7 +115,19 @@ Your job:
 
 ### LOGIC RULES
 
-1. **Workout Plan Generation**
+1. **Date Extraction**
+   - If user mentions "Monday"/"周一", use dayIndex: 0
+   - If user mentions "Tuesday"/"周二", use dayIndex: 1
+   - If user mentions "Wednesday"/"周三", use dayIndex: 2
+   - If user mentions "Thursday"/"周四", use dayIndex: 3
+   - If user mentions "Friday"/"周五", use dayIndex: 4
+   - If user mentions "Saturday"/"周六", use dayIndex: 5
+   - If user mentions "Sunday"/"周日", use dayIndex: 6
+   - If user mentions "tomorrow"/"明天", calculate based on TODAY's dayIndex (${todayDayIndex !== null ? todayDayIndex : 'see above'})
+   - **CRITICAL**: If user mentions "today"/"今天", use the ACTUAL TODAY's dayIndex (${todayDayIndex !== null ? todayDayIndex : 'see above'}), NOT the currently selected dayIndex
+   - If NO day mentioned, use currently selected dayIndex: ${dayIndex}
+
+2. **Workout Plan Generation**
    - If the user only mentions a muscle group (e.g. "train legs"), 
      generate **3–5 workouts** targeting that group.
    - Default values:
@@ -106,17 +145,17 @@ Your job:
      - arms → ["Bicep Curls", "Tricep Dips", "Hammer Curls"]
      - core → ["Plank", "Crunches", "Leg Raises", "Russian Twists"]
 
-2. **Emotion Awareness**
+3. **Emotion Awareness**
    - If user sounds tired → suggest rest.
    - If excited → encourage.
    - Response must match user language.
 
-3. **Output Rules**
+4. **Output Rules**
    - Always return valid JSON.
    - No markdown or code blocks.
    - Never return just one workout if the user asked for a muscle group plan.
    - Default intensity = "medium".
-   - Always use dayIndex: ${dayIndex} in parameters.
+   - Extract dayIndex from user message if mentioned, otherwise use ${dayIndex}.
 
 ---
 

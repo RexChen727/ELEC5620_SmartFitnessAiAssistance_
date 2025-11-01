@@ -51,14 +51,6 @@ const WeeklyPlan = () => {
         clearDayWorkouts
     } = useWeeklyPlan(user);
 
-    const {
-        messages,
-        isThinking,
-        sendMessage,
-        pushAIMessage,
-        setMessages
-    } = useAIChatAgent(user, weeklyPlan, selectedDay, loadAllPlans);
-
     // 星期标签
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     
@@ -93,10 +85,90 @@ const WeeklyPlan = () => {
         return `${formatDayShort(start)} – ${formatDayShort(end)}`;
     };
 
-    const dayLabels = days.map((_, i) => days[i]);
+    // 格式化显示日期范围（从今天开始的未来7天）
+    const formatDisplayDateRange = () => {
+        if (displayDates.length === 7) {
+            const start = displayDates[0];
+            const end = displayDates[6];
+            return `${formatDayShort(start)} – ${formatDayShort(end)}`;
+        }
+        return '';
+    };
+
+    // 获取实际的今天日期
+    const getActualToday = () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return today;
+    };
+
+    // 创建显示顺序：从今天开始，显示未来7天（今天 + 明天 + ... + 6天后）
+    // displayIndex -> 实际日期 的映射
+    const getDisplayDates = () => {
+        const today = getActualToday();
+        const dates = [];
+        // 从今天开始，显示未来7天
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(today);
+            date.setDate(date.getDate() + i);
+            dates.push(date);
+        }
+        return dates;
+    };
+
+    // 获取日期对应的dayIndex（相对于该日期所在周的周一）
+    // 对于任何日期，计算它在其所在周的周一后的第几天
+    const getDayIndexForDate = (date) => {
+        const dateCopy = new Date(date);
+        dateCopy.setHours(0, 0, 0, 0);
+        const dayOfWeek = dateCopy.getDay(); // 0=周日, 1=周一, ..., 6=周六
+        // 转换为周一到周日的索引（0=周一, 6=周日）
+        const dayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        return dayIndex;
+    };
+
+    // 获取日期所在周的周一
+    const getMondayForDate = (date) => {
+        const dateCopy = new Date(date);
+        dateCopy.setHours(0, 0, 0, 0);
+        const dayOfWeek = dateCopy.getDay(); // 0=周日, 1=周一, ..., 6=周六
+        const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const monday = new Date(dateCopy);
+        monday.setDate(monday.getDate() + daysToMonday);
+        return monday;
+    };
+
+    // 获取显示日期数组
+    const displayDates = getDisplayDates();
+    
+    // 获取显示索引对应的实际日期
+    const getDisplayDate = (displayIndex) => {
+        return displayDates[displayIndex];
+    };
+
+    // 获取显示索引对应的dayIndex（相对于当前周）
+    const getActualDayIndex = (displayIndex) => {
+        const date = displayDates[displayIndex];
+        return getDayIndexForDate(date);
+    };
+
+    // 根据显示日期创建dayLabels（显示星期几）
+    const dayLabels = displayDates.map(date => {
+        const dayOfWeek = date.getDay(); // 0=周日, 1=周一, ..., 6=周六
+        return days[dayOfWeek === 0 ? 6 : dayOfWeek - 1];
+    });
 
     const goPrevWeek = () => setWeekStart(prev => addDays(prev, -7));
     const goNextWeek = () => setWeekStart(prev => addDays(prev, 7));
+
+    // AI Chat Agent - 传入显示日期数组（从今天开始的未来7天）
+    const {
+        messages,
+        isThinking,
+        sendMessage,
+        pushAIMessage,
+        setMessages
+    } = useAIChatAgent(user, weeklyPlan, getActualDayIndex(selectedDay), loadAllPlans, displayDates);
 
     const navigatePlan = (direction) => {
         const newIndex = selectedPlanIndex - direction;
@@ -133,20 +205,10 @@ const WeeklyPlan = () => {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     };
 
-    // 初始化时自动选中今天
+    // 初始化时自动选中今天（今天在显示顺序中总是第一个，displayIndex=0）
     useEffect(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        // 检查今天是否在当前显示的周内
-        for (let i = 0; i < 7; i++) {
-            const dayDate = addDays(weekStart, i);
-            if (isToday(dayDate)) {
-                setSelectedDay(i);
-                break;
-            }
-        }
-    }, [weekStart]); // eslint-disable-line react-hooks/exhaustive-deps
+        setSelectedDay(0); // 今天始终在位置0
+    }, []); // 只在组件挂载时执行一次
 
     // 事件处理
     const handleAddWorkout = () => {
@@ -188,17 +250,18 @@ const WeeklyPlan = () => {
             return;
         }
 
-        const dayKey = String(selectedDay);
+        const actualDayIndex = getActualDayIndex(selectedDay);
+        const dayKey = String(actualDayIndex);
         if (!workoutsByDay[dayKey] || workoutsByDay[dayKey].length === 0) {
             alert('No workouts to clear for this day');
             return;
         }
 
-        if (!confirm(`Are you sure you want to clear all workouts for ${days[selectedDay]}?`)) {
+        if (!confirm(`Are you sure you want to clear all workouts for ${days[actualDayIndex]}?`)) {
             return;
         }
 
-        const result = await clearDayWorkouts(selectedDay);
+        const result = await clearDayWorkouts(actualDayIndex);
         if (result.success) {
             alert('Day workouts cleared successfully');
         } else {
@@ -407,7 +470,7 @@ const WeeklyPlan = () => {
                     {/* Week header with navigation */}
                     <div className="flex items-center justify-between mb-3">
                         <div className="text-sm text-gray-600">
-                            <span className="font-semibold">Week:</span> {formatWeekRange(weekStart)}
+                            <span className="font-semibold">Week:</span> {formatDisplayDateRange()}
                         </div>
                         <div className="flex items-center space-x-2">
                             <button onClick={goPrevWeek} className="p-2 rounded-lg hover:bg-gray-100">
@@ -421,15 +484,18 @@ const WeeklyPlan = () => {
 
                     {/* Days Grid */}
                     <div className="grid grid-cols-7 gap-3">
-                        {dayLabels.map((day, index) => {
-                            const dayDate = addDays(weekStart, index);
+                        {dayLabels.map((day, displayIndex) => {
+                            // displayIndex 是显示顺序中的索引（0-6，0=今天）
+                            // dayDate 是实际日期（从今天开始的未来7天）
+                            const dayDate = displayDates[displayIndex];
+                            const actualDayIndex = getActualDayIndex(displayIndex);
                             const isTodayDate = isToday(dayDate);
-                            const isSelected = selectedDay === index;
+                            const isSelected = selectedDay === displayIndex;
                             
                             return (
                                 <button
-                                    key={index}
-                                    onClick={() => setSelectedDay(index)}
+                                    key={displayIndex}
+                                    onClick={() => setSelectedDay(displayIndex)}
                                     className={`p-4 rounded-lg border-2 transition-all ${
                                         isSelected
                                             ? 'border-purple-500 bg-purple-50'
@@ -454,7 +520,7 @@ const WeeklyPlan = () => {
                                             {formatDayShort(dayDate)}
                                             {isTodayDate && <span className="ml-1">(Today)</span>}
                                         </div>
-                                        {hasCompletedWorkout(index) && (
+                                        {hasCompletedWorkout(actualDayIndex) && (
                                             <CheckCircle size={16} className="text-green-500 mx-auto mt-2" />
                                         )}
                                     </div>
@@ -470,12 +536,12 @@ const WeeklyPlan = () => {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col" style={{ height: '600px' }}>
                         <div className="flex items-center justify-between mb-4 flex-shrink-0">
                             <h3 className="text-lg font-semibold text-gray-900">
-                                {days[selectedDay]} Workouts
+                                {days[getActualDayIndex(selectedDay)]} Workouts
                             </h3>
                             <div className="flex items-center space-x-2">
                                 <button
                                     onClick={handleClearDayClick}
-                                    disabled={!weeklyPlan || getWorkoutsForDay(selectedDay).length === 0 || loading}
+                                    disabled={!weeklyPlan || getWorkoutsForDay(getActualDayIndex(selectedDay)).length === 0 || loading}
                                     className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:bg-gray-400 text-sm"
                                 >
                                     <Edit3 size={14} />
@@ -493,9 +559,9 @@ const WeeklyPlan = () => {
                         </div>
 
                         <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-                            {getWorkoutsForDay(selectedDay).length > 0 ? (
+                            {getWorkoutsForDay(getActualDayIndex(selectedDay)).length > 0 ? (
                                 <div className="space-y-3">
-                                    {getWorkoutsForDay(selectedDay).map((workout) => (
+                                    {getWorkoutsForDay(getActualDayIndex(selectedDay)).map((workout) => (
                                         <div
                                             key={workout.id}
                                             className={`p-4 rounded-lg border transition ${
@@ -643,7 +709,7 @@ const WeeklyPlan = () => {
                     isOpen={showAddWorkoutDialog}
                     onClose={() => setShowAddWorkoutDialog(false)}
                     onSave={saveWorkout}
-                    currentDay={selectedDay}
+                    currentDay={getActualDayIndex(selectedDay)}
                     weeklyPlanId={weeklyPlan?.id || null}
                 />
             )}
@@ -658,7 +724,7 @@ const WeeklyPlan = () => {
                     }}
                     onSave={saveEditedWorkout}
                     workout={selectedWorkout}
-                    currentDay={selectedDay}
+                    currentDay={getActualDayIndex(selectedDay)}
                     weeklyPlanId={weeklyPlan?.id}
                 />
             )}

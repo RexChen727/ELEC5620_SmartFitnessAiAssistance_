@@ -35,7 +35,7 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
  * AI Chat Agent Hook
  * 封装 AI 聊天相关的状态和操作逻辑
  */
-export const useAIChatAgent = (user, weeklyPlan, selectedDay, loadAllPlans) => {
+export const useAIChatAgent = (user, weeklyPlan, selectedDay, loadAllPlans, displayDates = null) => {
     const [messages, setMessages] = useState([
         {
             id: 1,
@@ -131,11 +131,30 @@ export const useAIChatAgent = (user, weeklyPlan, selectedDay, loadAllPlans) => {
         setIsThinking(true);
 
         try {
-            // 构建意图识别提示词（传入 dayIndex 数字和 day 名称）
+            // 使用显示日期数组（从今天开始的未来7天）
+            // 如果没有传入，则使用当前周的日期作为后备
+            let weekDates = displayDates;
+            if (!weekDates || weekDates.length === 0) {
+                // 后备方案：计算当前周的日期
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const dayOfWeek = today.getDay();
+                const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                const monday = new Date(today);
+                monday.setDate(monday.getDate() + daysToMonday);
+                weekDates = Array.from({ length: 7 }, (_, i) => {
+                    const date = new Date(monday);
+                    date.setDate(date.getDate() + i);
+                    return date;
+                });
+            }
+            
+            // 构建意图识别提示词（传入 dayIndex、day 名称和显示日期数组）
             const intentPrompt = aiAgentService.buildIntentPrompt(
                 messageContent,
                 selectedDay, // dayIndex: 0-6
-                DAYS[selectedDay] // day name: "Monday", etc.
+                DAYS[selectedDay], // day name: "Monday", etc.
+                weekDates // 显示日期数组（从今天开始的未来7天）
             );
 
             // 调用 AI
@@ -184,7 +203,7 @@ export const useAIChatAgent = (user, weeklyPlan, selectedDay, loadAllPlans) => {
         } finally {
             setIsThinking(false);
         }
-    }, [user, messages.length, selectedDay, weeklyPlan, handleClearDay, handleAddWorkout]);
+    }, [user, messages.length, selectedDay, weeklyPlan, displayDates, handleClearDay, handleAddWorkout]);
 
     /**
      * 添加 AI 消息（用于按钮点击触发的快捷操作）
