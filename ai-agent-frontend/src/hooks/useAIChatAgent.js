@@ -49,36 +49,36 @@ export const useAIChatAgent = (user, weeklyPlan, selectedDay, loadAllPlans) => {
 
     /**
      * 处理 add_workout 操作
+     * 直接使用 AI 返回的 workouts 数组
      */
     const handleAddWorkout = useCallback(async (intent) => {
         if (!intent.parameters) return '参数缺失';
 
         try {
-            // 处理中英文肌肉群名称
-            let muscleGroup = intent.parameters.muscleGroup || 'General';
-            // 如果是中文，先转换为英文key用于查找
-            const normalizedGroup = MUSCLE_GROUP_MAP[muscleGroup] || muscleGroup.toLowerCase();
+            // 获取 AI 返回的 workouts 数组
+            const workouts = intent.parameters.workouts || [];
+            const dayIndex = intent.parameters.dayIndex !== undefined 
+                ? intent.parameters.dayIndex 
+                : selectedDay; // 如果 AI 没返回 dayIndex，使用当前选中的日期
             
-            const count = intent.parameters.count || 1;
-            const sets = intent.parameters.sets || 3;
-            const reps = intent.parameters.reps || 12;
-            const weight = intent.parameters.weight || '';
-            const intensity = intent.parameters.intensity || '';
-            
-            // 使用normalizedGroup查找训练列表
-            const exercises = WORKOUT_NAMES[normalizedGroup] || WORKOUT_NAMES['chest'] || WORKOUT_NAMES[muscleGroup] || WORKOUT_NAMES['chest'];
-            
-            // 添加指定数量的训练
-            for (let i = 0; i < Math.min(count, exercises.length); i++) {
+            if (!workouts || workouts.length === 0) {
+                return '❌ AI 没有生成任何训练，请重试。';
+            }
+
+            console.log('AI returned workouts:', workouts);
+            console.log('Day index:', dayIndex);
+
+            // 遍历 workouts 数组，添加每个训练
+            for (const workout of workouts) {
                 const workoutData = {
-                    dayIndex: selectedDay,
-                    workoutName: exercises[i],
-                    sets: sets,
-                    reps: reps,
-                    weight: weight || '',
-                    duration: '',
-                    notes: `AI generated ${muscleGroup} workout${intensity ? ` - ${intensity}` : ''}`,
-                    completed: false
+                    dayIndex: dayIndex,
+                    workoutName: workout.workoutName || 'Unknown Workout',
+                    sets: workout.sets || 3,
+                    reps: workout.reps || 12,
+                    weight: workout.weight || '',
+                    duration: workout.duration || '',
+                    notes: workout.notes || '',
+                    completed: workout.completed !== undefined ? workout.completed : false
                 };
                 
                 // 只有当 weeklyPlan 存在时才发送 planId
@@ -90,8 +90,9 @@ export const useAIChatAgent = (user, weeklyPlan, selectedDay, loadAllPlans) => {
             }
             
             await loadAllPlans();
-            return intent.response || `✅ 已为您添加 ${count} 个${muscleGroup}训练！`;
+            return intent.response || `✅ 已为您添加 ${workouts.length} 个训练！`;
         } catch (error) {
+            console.error('Error adding workouts:', error);
             return `❌ 添加失败：${error.response?.data?.error || error.message}`;
         }
     }, [user, weeklyPlan, selectedDay, loadAllPlans]);
@@ -130,10 +131,11 @@ export const useAIChatAgent = (user, weeklyPlan, selectedDay, loadAllPlans) => {
         setIsThinking(true);
 
         try {
-            // 构建意图识别提示词
+            // 构建意图识别提示词（传入 dayIndex 数字和 day 名称）
             const intentPrompt = aiAgentService.buildIntentPrompt(
                 messageContent,
-                DAYS[selectedDay]
+                selectedDay, // dayIndex: 0-6
+                DAYS[selectedDay] // day name: "Monday", etc.
             );
 
             // 调用 AI

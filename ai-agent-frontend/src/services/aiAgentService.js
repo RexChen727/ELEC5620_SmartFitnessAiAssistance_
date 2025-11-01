@@ -38,47 +38,89 @@ export const aiAgentService = {
 
     /**
      * Build intelligent intent-recognition prompt
-     * 适配本地处理逻辑：使用 muscleGroup + count 方式
+     * AI directly returns complete workouts array
      */
-    buildIntentPrompt(userMessage, currentDay) {
+    buildIntentPrompt(userMessage, dayIndex, dayName) {
         return `
-You are an intelligent AI fitness assistant.
-Understand what the user wants from their natural message and classify it as either:
-1. an ACTION command (add/remove/clear/update/mark_complete), or
-2. a general conversation.
+You are an intelligent AI fitness assistant that generates structured workout data for a gym app.
 
 User message: """${userMessage}"""
-Current context:
-- Selected day: ${currentDay}
+Current day: ${dayName} (dayIndex: ${dayIndex})
 
-Respond ONLY in valid JSON. 
-If it's an ACTION, use:
+Your job:
+- Understand whether the message is an ACTION command or general conversation.
+- If ACTION, return detailed workout JSON strictly following the schema below.
+
+---
+
+### JSON FORMAT
+
+#### ACTION
 {
   "isAction": true,
-  "action": "add_workout" | "remove_workout" | "clear_day" | "update_workout" | "mark_complete" | "general_response",
+  "action": "add_workout" | "remove_workout" | "clear_day" | "update_workout" | "mark_complete",
   "parameters": {
-    "muscleGroup": "chest" | "back" | "legs" | "shoulders" | "arms" | "core" | null,
-    "count": number | null,
-    "sets": number | null,
-    "reps": number | null,
-    "weight": string | null,
-    "intensity": "light" | "medium" | "hard" | null
+    "dayIndex": ${dayIndex},
+    "muscleGroup": "legs" | "chest" | "back" | "shoulders" | "arms" | "core" | null,
+    "intensity": "light" | "medium" | "hard" | null,
+    "workouts": [
+      {
+        "workoutName": string,
+        "sets": number,
+        "reps": number,
+        "weight": string | null,
+        "duration": string | null,
+        "notes": string | null,
+        "completed": boolean
+      }
+    ]
   },
-  "response": "Short, friendly, motivational confirmation message"
+  "response": "Short motivational sentence in user's language"
 }
 
-If it's NOT an action, respond as:
+#### GENERAL
 {
   "isAction": false,
-  "response": "Natural, empathetic, and short conversation reply"
+  "response": "Natural, empathetic, concise chat reply"
 }
 
-Guidelines:
-- Keep JSON clean with no markdown or code blocks.
-- Be adaptive to tone: if user sounds tired → suggest rest; if excited → encourage.
-- For add_workout: extract muscleGroup and count from user message. Default count is 3-5 if not specified.
-- The system will use the muscleGroup to select exercises from a predefined list.
-- Always respond in English.
+---
+
+### LOGIC RULES
+
+1. **Workout Plan Generation**
+   - If the user only mentions a muscle group (e.g. "train legs"), 
+     generate **3–5 workouts** targeting that group.
+   - Default values:
+     - sets = 3, reps = 12, duration = "30min", completed = false
+     - weight can be "bodyweight" if not specified
+     - intensity affects sets:
+       - light → 2–3 sets
+       - medium → 3–4 sets
+       - hard → 4–5 sets
+   - Example workout library:
+     - legs → ["Squats", "Lunges", "Leg Press", "Leg Curls", "Calf Raises"]
+     - chest → ["Bench Press", "Push Ups", "Chest Fly", "Incline Dumbbell Press"]
+     - back → ["Pull Ups", "Lat Pulldown", "Seated Row", "Deadlift"]
+     - shoulders → ["Overhead Press", "Lateral Raise", "Arnold Press"]
+     - arms → ["Bicep Curls", "Tricep Dips", "Hammer Curls"]
+     - core → ["Plank", "Crunches", "Leg Raises", "Russian Twists"]
+
+2. **Emotion Awareness**
+   - If user sounds tired → suggest rest.
+   - If excited → encourage.
+   - Response must match user language.
+
+3. **Output Rules**
+   - Always return valid JSON.
+   - No markdown or code blocks.
+   - Never return just one workout if the user asked for a muscle group plan.
+   - Default intensity = "medium".
+   - Always use dayIndex: ${dayIndex} in parameters.
+
+---
+
+Respond only with JSON.
 `;
     }
 };
