@@ -97,7 +97,7 @@ If it's just a QUESTION or CONVERSATION, respond with JSON:
 
 Respond ONLY with valid JSON, no other text.`;
 
-            const response = await axios.post('/api/chat/general', {
+            const response = await axios.post(`/api/chat/general?userId=${user.id}`, {
                 message: intentPrompt,
                 conversationId: null
             });
@@ -125,7 +125,7 @@ Respond ONLY with valid JSON, no other text.`;
                 switch (intent.action) {
                     case 'clear_day':
                         try {
-                            await axios.delete(`/api/weekly-plan/clear-day?planId=${weeklyPlan.id}&dayIndex=${selectedDay}`);
+                            await axios.delete(`/api/weekly-plan/clear-day?planId=${weeklyPlan.id}&dayIndex=${selectedDay}&userId=${user.id}`);
                             await loadAllPlans();
                             actionResult = intent.response || `✅ 已清除 ${days[selectedDay]} 的所有训练！`;
                         } catch (error) {
@@ -165,7 +165,7 @@ Respond ONLY with valid JSON, no other text.`;
                                         completed: false
                                     };
                                     
-                                    await axios.post('/api/weekly-plan/add-workout', workoutData);
+                                    await axios.post(`/api/weekly-plan/add-workout?userId=${user.id}`, workoutData);
                                 }
                                 
                                 await loadAllPlans();
@@ -393,15 +393,27 @@ Respond ONLY with valid JSON, no other text.`;
                 setEndDate(targetPlan.endDate);
                 setWorkoutsByDay(targetPlan.workoutsByDay || {});
                 setMuscleGroupsByDay(targetPlan.muscleGroupsByDay || {});
+            } else {
+                // 没有计划时，清空状态
+                setWeeklyPlan(null);
+                setStartDate('');
+                setEndDate('');
+                setWorkoutsByDay({});
+                setMuscleGroupsByDay({});
+                setSelectedPlanIndex(null);
             }
         } catch (error) {
             console.error('Error loading all plans:', error);
+            // 出错时也清空状态
+            setWeeklyPlan(null);
+            setAllPlans([]);
         }
     };
 
     const loadPlanDetails = async (planId) => {
+        if (!user) return;
         try {
-            const response = await axios.get(`/api/weekly-plan/${planId}`);
+            const response = await axios.get(`/api/weekly-plan/${planId}?userId=${user.id}`);
             const plan = response.data;
             
             console.log('Plan details loaded:', plan);
@@ -421,22 +433,8 @@ Respond ONLY with valid JSON, no other text.`;
             return;
         }
 
-        // Check if current week already has a plan
-        try {
-            const checkResponse = await axios.get(`/api/weekly-plan/check-current-week?userId=${user.id}`);
-            const hasPlan = checkResponse.data.hasPlan;
-            
-            if (hasPlan) {
-                alert('Current week already has a plan. Please delete it before generating a new one.');
-                return;
-            }
-            
-            // No plan exists, generate directly
-            await generateAIPlan();
-        } catch (error) {
-            console.error('Error checking current week plan:', error);
-            alert('Failed to check current week plan');
-        }
+        // 直接生成计划，后端会自动处理覆盖现有计划
+        await generateAIPlan();
     };
 
     const generateAIPlan = async () => {
@@ -529,8 +527,9 @@ Respond ONLY with valid JSON, no other text.`;
     };
 
     const toggleWorkoutComplete = async (workoutId) => {
+        if (!user) return;
         try {
-            await axios.put(`/api/weekly-plan/workout/${workoutId}/toggle`);
+            await axios.put(`/api/weekly-plan/workout/${workoutId}/toggle?userId=${user.id}`);
             // Reload all plans to get updated state
             await loadAllPlans();
             // Keep showing the same plan (loadAllPlans preserves selectedPlanIndex)
@@ -558,7 +557,7 @@ Respond ONLY with valid JSON, no other text.`;
         setLoading(true);
 
         try {
-            await axios.delete(`/api/weekly-plan/clear-day?planId=${weeklyPlan.id}&dayIndex=${selectedDay}`);
+            await axios.delete(`/api/weekly-plan/clear-day?planId=${weeklyPlan.id}&dayIndex=${selectedDay}&userId=${user.id}`);
             // Reload all plans to refresh the view
             await loadAllPlans();
             alert('Day workouts cleared successfully');
@@ -581,7 +580,7 @@ Respond ONLY with valid JSON, no other text.`;
         setLoading(true);
 
         try {
-            await axios.delete(`/api/weekly-plan/${weeklyPlan.id}`);
+            await axios.delete(`/api/weekly-plan/${weeklyPlan.id}?userId=${user.id}`);
             // Reload all plans
             await loadAllPlans();
             alert('Weekly plan deleted successfully');
@@ -598,16 +597,25 @@ Respond ONLY with valid JSON, no other text.`;
     };
 
     const handleAddWorkout = () => {
+        if (!user) {
+            alert('Please login first');
+            return;
+        }
+        
         if (!weeklyPlan) {
-            alert('Please generate a weekly plan first');
+            // 如果没有计划，提示用户生成计划
+            if (confirm('You need a weekly plan first. Would you like to generate one now?')) {
+                handleGenerateClick();
+            }
             return;
         }
         setShowAddWorkoutDialog(true);
     };
 
     const saveWorkout = async (workoutData) => {
+        if (!user) return;
         try {
-            const response = await axios.post('/api/weekly-plan/add-workout', workoutData);
+            const response = await axios.post(`/api/weekly-plan/add-workout?userId=${user.id}`, workoutData);
             console.log('Workout saved:', response.data);
             
             // Reload all plans to refresh the view
@@ -628,8 +636,9 @@ Respond ONLY with valid JSON, no other text.`;
     };
 
     const updateWorkout = async (workoutData) => {
+        if (!user) return;
         try {
-            const response = await axios.put(`/api/weekly-plan/workout/${workoutData.id}`, workoutData);
+            const response = await axios.put(`/api/weekly-plan/workout/${workoutData.id}?userId=${user.id}`, workoutData);
             console.log('Workout updated:', response.data);
             
             // Reload all plans to refresh the view
@@ -859,11 +868,11 @@ Respond ONLY with valid JSON, no other text.`;
                                 </button>
                                 <button
                                     onClick={handleAddWorkout}
-                                    disabled={!weeklyPlan}
+                                    disabled={!user || loading}
                                     className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 text-sm"
                                 >
                                     <Plus size={14} />
-                                    <span>Add Workout</span>
+                                    <span>{weeklyPlan ? 'Add Workout' : 'Generate Plan First'}</span>
                                 </button>
                             </div>
                             </div>

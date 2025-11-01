@@ -57,16 +57,27 @@ public class AiAgentService {
     }
 
     public ChatResponse chat(String agentType, String message, Long conversationId) {
+        return chat(agentType, message, conversationId, null);
+    }
+
+    public ChatResponse chat(String agentType, String message, Long conversationId, Long userId) {
         try {
             // Get or create conversation
             Conversation conversation;
             if (conversationId != null) {
                 conversation = conversationService.findById(conversationId)
                         .orElseThrow(() -> new RuntimeException("Conversation not found"));
+                // Verify the conversation belongs to the user if userId is provided
+                if (userId != null && !conversation.getUser().getId().equals(userId)) {
+                    throw new RuntimeException("Conversation does not belong to this user");
+                }
             } else {
+                if (userId == null) {
+                    throw new RuntimeException("UserId is required to create a new conversation");
+                }
                 // Create new conversation with first message as title
                 String title = message.length() > 50 ? message.substring(0, 50) + "..." : message;
-                conversation = conversationService.createConversation(1L, title); // Default user ID
+                conversation = conversationService.createConversation(userId, title);
             }
 
             // Save user message
