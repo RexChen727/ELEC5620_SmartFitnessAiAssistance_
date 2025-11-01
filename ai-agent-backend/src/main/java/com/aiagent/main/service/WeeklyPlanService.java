@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +26,7 @@ public class WeeklyPlanService {
     private final WeeklyPlanWorkoutRepository weeklyPlanWorkoutRepository;
     private final UserService userService;
     private final GymEquipmentService gymEquipmentService;
+    private final UserProfileService userProfileService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -43,12 +45,14 @@ public class WeeklyPlanService {
                            WeeklyPlanWorkoutRepository weeklyPlanWorkoutRepository,
                            UserService userService,
                            GymEquipmentService gymEquipmentService,
+                           UserProfileService userProfileService,
                            RestTemplate restTemplate,
                            ObjectMapper objectMapper) {
         this.weeklyPlanRepository = weeklyPlanRepository;
         this.weeklyPlanWorkoutRepository = weeklyPlanWorkoutRepository;
         this.userService = userService;
         this.gymEquipmentService = gymEquipmentService;
+        this.userProfileService = userProfileService;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
     }
@@ -56,6 +60,7 @@ public class WeeklyPlanService {
     /**
      * Generate a weekly plan using AI
      */
+    @Transactional
     public WeeklyPlan generateWeeklyPlan(Long userId) {
         try {
             // Get user
@@ -78,9 +83,12 @@ public class WeeklyPlanService {
 
             // Get equipment knowledge base
             String equipmentKnowledge = getEquipmentKnowledgeBase();
+            
+            // Get user profile for personalized planning
+            String userProfileContext = getUserProfileContext(userId);
 
             // Generate weekly plan using AI
-            String prompt = buildWeeklyPlanPrompt(equipmentKnowledge, monday, sunday);
+            String prompt = buildWeeklyPlanPrompt(equipmentKnowledge, userProfileContext, monday, sunday);
             String aiResponse = callAiModel(prompt);
 
             // Parse AI response and create plan
@@ -95,9 +103,35 @@ public class WeeklyPlanService {
     }
 
     /**
+     * Get user profile context for AI
+     */
+    private String getUserProfileContext(Long userId) {
+        try {
+            var opt = userProfileService.getByUserId(userId);
+            if (opt.isPresent()) {
+                var p = opt.get();
+                String gender = p.getGender() != null ? p.getGender() : "Not specified";
+                String age = p.getAge() != null ? String.valueOf(p.getAge()) : "Not specified";
+                String height = p.getHeightCm() != null ? p.getHeightCm() + " cm" : "Not specified";
+                String weight = p.getWeightKg() != null ? p.getWeightKg() + " kg" : "Not specified";
+                
+                return "\n\nUser Profile:\n" +
+                       "- Gender: " + gender + "\n" +
+                       "- Age: " + age + "\n" +
+                       "- Height: " + height + "\n" +
+                       "- Weight: " + weight + "\n" +
+                       "Please adjust the training intensity, volume, and exercise selection based on this profile.";
+            }
+        } catch (Exception e) {
+            log.warn("Failed to load user profile for userId {}: {}", userId, e.getMessage());
+        }
+        return "";
+    }
+
+    /**
      * Build prompt for AI to generate weekly plan
      */
-    private String buildWeeklyPlanPrompt(String equipmentKnowledge, LocalDate startDate, LocalDate endDate) {
+    private String buildWeeklyPlanPrompt(String equipmentKnowledge, String userProfileContext, LocalDate startDate, LocalDate endDate) {
         StringBuilder prompt = new StringBuilder();
         
         prompt.append("You are an expert fitness trainer and nutritionist. ").append(System.lineSeparator());
@@ -114,13 +148,19 @@ public class WeeklyPlanService {
               .append(System.lineSeparator());
         
         prompt.append("Equipment Knowledge Base:").append(System.lineSeparator())
-              .append(equipmentKnowledge).append(System.lineSeparator())
-              .append(System.lineSeparator());
+              .append(equipmentKnowledge).append(System.lineSeparator());
+        
+        if (!userProfileContext.isEmpty()) {
+            prompt.append(userProfileContext).append(System.lineSeparator());
+        }
+        
+        prompt.append(System.lineSeparator());
         
         prompt.append("Return ONLY a JSON array with this exact structure:").append(System.lineSeparator())
               .append("[").append(System.lineSeparator())
               .append("  {").append(System.lineSeparator())
               .append("    \"day\": \"Monday\",").append(System.lineSeparator())
+              .append("    \"muscleGroup\": \"Chest\",").append(System.lineSeparator())
               .append("    \"workouts\": [").append(System.lineSeparator())
               .append("      {").append(System.lineSeparator())
               .append("        \"name\": \"Bench Press\",").append(System.lineSeparator())
@@ -132,11 +172,18 @@ public class WeeklyPlanService {
               .append("      }").append(System.lineSeparator())
               .append("    ]").append(System.lineSeparator())
               .append("  },").append(System.lineSeparator())
-              .append("  ...").append(System.lineSeparator())
+              .append("  {").append(System.lineSeparator())
+              .append("    \"day\": \"Tuesday\",").append(System.lineSeparator())
+              .append("    \"muscleGroup\": \"Rest\",").append(System.lineSeparator())
+              .append("    \"workouts\": []").append(System.lineSeparator())
+              .append("  }").append(System.lineSeparator())
               .append("]").append(System.lineSeparator())
               .append(System.lineSeparator());
         
-        prompt.append("Important: Return ONLY valid JSON, no additional text.");
+        prompt.append("Important:").append(System.lineSeparator())
+              .append("- For each day, include a \"muscleGroup\" field (e.g., \"Chest\", \"Back\", \"Legs\", \"Shoulders\", \"Arms\", \"Core\", \"Cardio\", \"Full Body\", or \"Rest\")").append(System.lineSeparator())
+              .append("- For rest days, set muscleGroup to \"Rest\" and workouts to an empty array []").append(System.lineSeparator())
+              .append("- Return ONLY valid JSON, no additional text.");
         
         return prompt.toString();
     }
@@ -275,13 +322,26 @@ public class WeeklyPlanService {
             for (Map<String, Object> dayData : days) {
                 String dayName = (String) dayData.get("day");
                 int dayIndex = getDayIndex(dayName);
+                String muscleGroup = (String) dayData.get("muscleGroup");
+                if (muscleGroup == null || muscleGroup.isEmpty()) {
+                    muscleGroup = "Training"; // 默认值
+                }
                 
                 List<Map<String, Object>> workouts = (List<Map<String, Object>>) dayData.get("workouts");
+                
+                if (workouts == null || workouts.isEmpty()) {
+                    // 如果是 Rest day，也创建一个占位记录
+                    if ("Rest".equalsIgnoreCase(muscleGroup)) {
+                        // 不添加任何 workout，前端会根据 muscleGroupsByDay 判断
+                        continue;
+                    }
+                }
                 
                 for (Map<String, Object> workoutData : workouts) {
                     WeeklyPlanWorkout workout = new WeeklyPlanWorkout();
                     workout.setWeeklyPlan(plan);
                     workout.setDayIndex(dayIndex);
+                    workout.setMuscleGroup(muscleGroup); // 新增
                     workout.setWorkoutName((String) workoutData.get("name"));
                     
                     if (workoutData.get("sets") instanceof Integer) {
@@ -382,6 +442,13 @@ public class WeeklyPlanService {
     public WeeklyPlan getCurrentPlan(Long userId) {
         Optional<WeeklyPlan> plan = weeklyPlanRepository.findCurrentPlan(userId, LocalDate.now());
         return plan.orElse(null);
+    }
+
+    /**
+     * Get a weekly plan by ID (no user filter; caller may enforce auth)
+     */
+    public WeeklyPlan getPlanById(Long planId) {
+        return weeklyPlanRepository.findById(planId).orElse(null);
     }
 
     /**

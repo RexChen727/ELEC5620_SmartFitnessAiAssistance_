@@ -43,4 +43,7 @@ public class WeeklyPlanWorkout {
 
     @Column(name = "notes", length = 2000)
     private String notes;
+
+    @Column(name = "muscle_group")
+    private String muscleGroup; // e.g., "Chest", "Back", "Legs", "Rest"
 }

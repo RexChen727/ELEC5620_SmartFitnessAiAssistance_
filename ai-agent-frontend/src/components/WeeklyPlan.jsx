@@ -14,10 +14,14 @@ const WeeklyPlan = () => {
     const [allPlans, setAllPlans] = useState([]);
     const [selectedPlanIndex, setSelectedPlanIndex] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [workoutsByDay, setWorkoutsByDay] = useState({});
     const [muscleGroupsByDay, setMuscleGroupsByDay] = useState({});
+    // Per-day training title shown under the date. Editable for selected day.
+    const [dayTitlesByDay, setDayTitlesByDay] = useState({});
+    const TITLE_OPTIONS = ['Rest', 'Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body', 'Cardio'];
     const [showCopyDialog, setShowCopyDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showAddWorkoutDialog, setShowAddWorkoutDialog] = useState(false);
@@ -77,10 +81,12 @@ Current context:
 - Current day: ${days[selectedDay]}
 - Weekly plan exists: ${weeklyPlan ? 'Yes' : 'No'}
 
-If it's an ACTION command (like add/remove/clear workouts), respond with JSON:
+IMPORTANT: If user says things like "创建周期", "生成周计划", "帮我安排一周训练", "更新周期", "create weekly plan", map it to action "create_weekly_plan".
+
+If it's an ACTION command (like add/remove/clear workouts, create/update weekly plan), respond with JSON:
 {
   "isAction": true,
-  "action": "clear_day" | "add_workout" | "remove_workout" | "general_response",
+  "action": "clear_day" | "add_workout" | "remove_workout" | "create_weekly_plan" | "general_response",
   "parameters": {
     "muscleGroup": "chest/back/legs/etc",
     "count": number,
@@ -107,10 +113,20 @@ Respond ONLY with valid JSON, no other text.`;
             // 尝试从回复中提取 JSON
             let intent;
             try {
-                // 移除可能的 markdown 代码块标记
-                aiResponseText = aiResponseText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-                intent = JSON.parse(aiResponseText);
+                // 移除所有 markdown 代码块标记 (更激进的清理)
+                let cleanedText = aiResponseText
+                    .replace(/```json/g, '')
+                    .replace(/```/g, '')
+                    .trim();
+                
+                console.log('原始AI响应:', aiResponseText);
+                console.log('清理后的JSON字符串:', cleanedText);
+                
+                intent = JSON.parse(cleanedText);
+                console.log('✅ 解析成功的intent:', intent);
             } catch (parseError) {
+                console.error('❌ JSON解析失败:', parseError);
+                console.error('清理后文本:', aiResponseText.replace(/```json/g, '').replace(/```/g, '').trim());
                 // 如果无法解析为 JSON，当作普通对话处理
                 intent = {
                     isAction: false,
@@ -119,14 +135,57 @@ Respond ONLY with valid JSON, no other text.`;
             }
 
             // 根据意图执行相应操作
-            if (intent.isAction && weeklyPlan) {
+            if (intent.isAction) {
                 let actionResult = '';
+                
+                // create_weekly_plan 不需要 weeklyPlan 存在
+                if (intent.action === 'create_weekly_plan') {
+                    try {
+                        setIsGeneratingPlan(true);
+                        console.log('正在生成周计划, userId:', user?.id);
+                        const genResponse = await axios.post('/api/weekly-plan/generate', null, {
+                            params: { userId: user.id }
+                        });
+                        console.log('生成成功:', genResponse.data);
+                        await loadAllPlans();
+                        actionResult = intent.response || '✅ 已为您创建本周全新的训练计划！每天都有对应的肌群安排和详细动作。';
+                    } catch (error) {
+                        console.error('生成失败:', error);
+                        console.error('错误详情:', error.response?.data);
+                        actionResult = `❌ 创建失败：${error.response?.data?.error || error.message}`;
+                    } finally {
+                        setIsGeneratingPlan(false);
+                    }
+                    
+                    const aiResponse = {
+                        id: messages.length + 2,
+                        type: 'ai',
+                        content: actionResult,
+                        timestamp: new Date()
+                    };
+                    setMessages(prev => [...prev, aiResponse]);
+                    setIsThinking(false);
+                    return;
+                }
+                
+                // 其他操作需要 weeklyPlan
+                if (!weeklyPlan) {
+                    const aiResponse = {
+                        id: messages.length + 2,
+                        type: 'ai',
+                        content: '⚠️ 当前没有周计划，请先创建一个周计划再执行此操作。您可以说"创建周期"或"生成周计划"。',
+                        timestamp: new Date()
+                    };
+                    setMessages(prev => [...prev, aiResponse]);
+                    setIsThinking(false);
+                    return;
+                }
                 
                 switch (intent.action) {
                     case 'clear_day':
                         try {
-                            await axios.delete(`/api/weekly-plan/clear-day?planId=${weeklyPlan.id}&dayIndex=${selectedDay}`);
-                            await loadAllPlans();
+                            await axios.delete(`/api/weekly-plan/clear-day?planId=${weeklyPlan.id}&dayIndex=${getBackendDayIndex(selectedDay)}`);
+                            await loadPlanDetails(weeklyPlan.id);
                             actionResult = intent.response || `✅ 已清除 ${days[selectedDay]} 的所有训练！`;
                         } catch (error) {
                             actionResult = `❌ 清除失败：${error.response?.data?.error || error.message}`;
@@ -152,10 +211,11 @@ Respond ONLY with valid JSON, no other text.`;
                                 const exercises = workoutNames[muscleGroup.toLowerCase()] || workoutNames['chest'];
                                 
                                 // 添加指定数量的训练
+                                console.log('AI add_workout -> muscleGroup:', muscleGroup, 'count:', count, 'planId:', weeklyPlan.id, 'uiDay:', selectedDay, 'backendDay:', getBackendDayIndex(selectedDay));
                                 for (let i = 0; i < Math.min(count, exercises.length); i++) {
                                     const workoutData = {
                                         planId: weeklyPlan.id,
-                                        dayIndex: selectedDay,
+                                        dayIndex: getBackendDayIndex(selectedDay),
                                         workoutName: exercises[i],
                                         sets: 3,
                                         reps: 12,
@@ -164,11 +224,10 @@ Respond ONLY with valid JSON, no other text.`;
                                         notes: `AI generated ${muscleGroup} workout`,
                                         completed: false
                                     };
-                                    
+                                    console.log('POST /add-workout payload:', workoutData);
                                     await axios.post('/api/weekly-plan/add-workout', workoutData);
                                 }
-                                
-                                await loadAllPlans();
+                                await loadPlanDetails(weeklyPlan.id);
                                 actionResult = intent.response || `✅ 已为您添加 ${count} 个${muscleGroup}训练！`;
                             } catch (error) {
                                 actionResult = `❌ 添加失败：${error.response?.data?.error || error.message}`;
@@ -312,6 +371,13 @@ Respond ONLY with valid JSON, no other text.`;
         return nd;
     };
 
+    // Convert UI day index (leftmost = today) to backend day index (0=Mon..6=Sun)
+    const getBackendDayIndex = (uiDayIndex) => {
+        const date = addDays(weekStart, uiDayIndex);
+        const jsDay = date.getDay(); // 0=Sun..6=Sat
+        return (jsDay + 6) % 7; // 0=Mon..6=Sun
+    };
+
     const formatDayShort = (date) => {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     };
@@ -372,6 +438,33 @@ Respond ONLY with valid JSON, no other text.`;
             setMuscleGroupsByDay(selectedPlan.muscleGroupsByDay || {});
         }
     }, [selectedPlanIndex, allPlans]);
+
+    // Initialize or refresh day titles when plan/workouts change
+    useEffect(() => {
+        const titles = {};
+        for (let i = 0; i < 7; i++) {
+            const workoutCount = (workoutsByDay[String(i)] || []).length;
+            const mg = (muscleGroupsByDay[i] || muscleGroupsByDay[String(i)] || '').trim();
+            
+            // 优先使用 AI 生成的 muscleGroup
+            if (mg) {
+                // Normalize to Title Case first token if needed
+                const norm = mg.split(',')[0].trim();
+                titles[i] = norm.charAt(0).toUpperCase() + norm.slice(1);
+            } else if (workoutCount === 0) {
+                titles[i] = 'Rest';
+            } else {
+                // 如果有 workout 但没有 muscleGroup，默认 Training
+                titles[i] = 'Training';
+            }
+        }
+        setDayTitlesByDay((prev) => ({ ...titles }));
+        console.log('📅 自动更新每日标题 (基于AI生成):', titles);
+    }, [workoutsByDay, muscleGroupsByDay]);
+
+    const handleTitleChange = (dayIndex, value) => {
+        setDayTitlesByDay((prev) => ({ ...prev, [dayIndex]: value }));
+    };
 
     const loadAllPlans = async () => {
         if (!user) return;
@@ -531,9 +624,12 @@ Respond ONLY with valid JSON, no other text.`;
     const toggleWorkoutComplete = async (workoutId) => {
         try {
             await axios.put(`/api/weekly-plan/workout/${workoutId}/toggle`);
-            // Reload all plans to get updated state
+            // Reload current plan only to avoid losing selection and ensure即时刷新
+            if (weeklyPlan?.id) {
+                await loadPlanDetails(weeklyPlan.id);
+            } else {
             await loadAllPlans();
-            // Keep showing the same plan (loadAllPlans preserves selectedPlanIndex)
+            }
         } catch (error) {
             console.error('Error toggling workout:', error);
         }
@@ -607,11 +703,18 @@ Respond ONLY with valid JSON, no other text.`;
 
     const saveWorkout = async (workoutData) => {
         try {
-            const response = await axios.post('/api/weekly-plan/add-workout', workoutData);
+            const payload = { ...workoutData };
+            if (payload.dayIndex === undefined || payload.dayIndex === null) {
+                payload.dayIndex = getBackendDayIndex(selectedDay);
+            } else {
+                payload.dayIndex = getBackendDayIndex(payload.dayIndex);
+            }
+            console.log('Dialog save workout payload:', payload);
+            const response = await axios.post('/api/weekly-plan/add-workout', payload);
             console.log('Workout saved:', response.data);
             
-            // Reload all plans to refresh the view
-            await loadAllPlans();
+            // Reload current plan to refresh the view
+            await loadPlanDetails(weeklyPlan.id);
             
             // Close dialog
             setShowAddWorkoutDialog(false);
@@ -632,8 +735,8 @@ Respond ONLY with valid JSON, no other text.`;
             const response = await axios.put(`/api/weekly-plan/workout/${workoutData.id}`, workoutData);
             console.log('Workout updated:', response.data);
             
-            // Reload all plans to refresh the view
-            await loadAllPlans();
+            // Reload current plan to refresh the view
+            await loadPlanDetails(weeklyPlan.id);
             
             // Close dialog
             setShowEditWorkoutDialog(false);
@@ -652,12 +755,14 @@ Respond ONLY with valid JSON, no other text.`;
     };
 
     const getWorkoutCount = (dayIndex) => {
-        return workoutsByDay[String(dayIndex)]?.length || 0;
+        const backendIndex = getBackendDayIndex(dayIndex);
+        return workoutsByDay[String(backendIndex)]?.length || 0;
     };
 
     const getMuscleGroupsForDay = (dayIndex) => {
         // Try both string and number keys
-        const muscleGroups = muscleGroupsByDay[dayIndex] || muscleGroupsByDay[String(dayIndex)];
+        const backendIndex = getBackendDayIndex(dayIndex);
+        const muscleGroups = muscleGroupsByDay[backendIndex] || muscleGroupsByDay[String(backendIndex)];
         if (muscleGroups && muscleGroups.trim() !== '') {
             return muscleGroups;
         }
@@ -667,7 +772,8 @@ Respond ONLY with valid JSON, no other text.`;
     };
 
     const getWorkoutsForDay = (dayIndex) => {
-        return workoutsByDay[String(dayIndex)] || [];
+        const backendIndex = getBackendDayIndex(dayIndex);
+        return workoutsByDay[String(backendIndex)] || [];
     };
 
     const hasCompletedWorkout = (dayIndex) => {
@@ -831,6 +937,24 @@ Respond ONLY with valid JSON, no other text.`;
                                     <div className="text-xs text-gray-500 mt-1">
                                         {formatDayShort(addDays(weekStart, index))}
                                     </div>
+                                    {/* Day Title Row */}
+                                    {selectedDay === index ? (
+                                        <div className="mt-2">
+                                            <select
+                                                value={dayTitlesByDay[index] || 'Rest'}
+                                                onChange={(e) => handleTitleChange(index, e.target.value)}
+                                                className="w-full text-xs border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            >
+                                                {TITLE_OPTIONS.map(opt => (
+                                                    <option key={opt} value={opt}>{opt}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-2 text-[11px] text-gray-600">
+                                            {dayTitlesByDay[index] || 'Rest'}
+                                        </div>
+                                    )}
                                     {hasCompletedWorkout(index) && (
                                         <CheckCircle size={16} className="text-green-500 mx-auto mt-2" />
                                     )}

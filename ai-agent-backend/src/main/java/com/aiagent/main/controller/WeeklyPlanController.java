@@ -127,10 +127,7 @@ public class WeeklyPlanController {
     @GetMapping("/{planId}")
     public ResponseEntity<?> getPlanById(@PathVariable Long planId) {
         try {
-            WeeklyPlan plan = weeklyPlanService.getAllPlans(1L).stream()
-                    .filter(p -> p.getId().equals(planId))
-                    .findFirst()
-                    .orElse(null);
+            WeeklyPlan plan = weeklyPlanService.getPlanById(planId);
             
             if (plan == null) {
                 return ResponseEntity.notFound().build();
@@ -224,6 +221,7 @@ public class WeeklyPlanController {
 
         // Group workouts by day
         Map<Integer, List<Map<String, Object>>> workoutsByDay = new HashMap<>();
+        Map<Integer, String> muscleGroupsByDay = new HashMap<>(); // 直接从 workout 读取
         
         for (WeeklyPlanWorkout workout : plan.getWorkouts()) {
             Map<String, Object> workoutDTO = new HashMap<>();
@@ -235,9 +233,15 @@ public class WeeklyPlanController {
             workoutDTO.put("duration", workout.getDuration());
             workoutDTO.put("completed", workout.getCompleted());
             workoutDTO.put("notes", workout.getNotes());
+            workoutDTO.put("muscleGroup", workout.getMuscleGroup());
 
             workoutsByDay.computeIfAbsent(workout.getDayIndex(), k -> new java.util.ArrayList<>())
                     .add(workoutDTO);
+            
+            // 优先使用 workout 中存储的 muscleGroup
+            if (workout.getMuscleGroup() != null && !workout.getMuscleGroup().isEmpty()) {
+                muscleGroupsByDay.put(workout.getDayIndex(), workout.getMuscleGroup());
+            }
         }
 
         dto.put("workoutsByDay", workoutsByDay);
@@ -249,35 +253,55 @@ public class WeeklyPlanController {
         }
         dto.put("workoutCount", countByDay);
 
-        // Calculate muscle groups per day
-        Map<Integer, String> muscleGroupsByDay = calculateMuscleGroupsByDay(workoutsByDay);
+        // 如果某些天没有 muscleGroup（旧数据），用原来的逻辑推算
+        for (Integer dayIndex = 0; dayIndex < 7; dayIndex++) {
+            if (!muscleGroupsByDay.containsKey(dayIndex) && workoutsByDay.containsKey(dayIndex)) {
+                String calculated = calculateMuscleGroupForDay(workoutsByDay.get(dayIndex));
+                if (calculated != null) {
+                    muscleGroupsByDay.put(dayIndex, calculated);
+                }
+            }
+            // 如果某天没有任何 workout，设为 "Rest"
+            if (!muscleGroupsByDay.containsKey(dayIndex) && !workoutsByDay.containsKey(dayIndex)) {
+                muscleGroupsByDay.put(dayIndex, "Rest");
+            }
+        }
+        
         dto.put("muscleGroupsByDay", muscleGroupsByDay);
 
         return dto;
     }
 
     /**
-     * Calculate the main muscle groups trained on each day
+     * Calculate the main muscle group for a single day's workouts (fallback)
      */
-    private Map<Integer, String> calculateMuscleGroupsByDay(Map<Integer, List<Map<String, Object>>> workoutsByDay) {
-        Map<Integer, String> muscleGroupsByDay = new HashMap<>();
+    private String calculateMuscleGroupForDay(List<Map<String, Object>> workouts) {
+        Set<String> allMuscles = new HashSet<>();
         
-        for (Map.Entry<Integer, List<Map<String, Object>>> entry : workoutsByDay.entrySet()) {
-            Integer dayIndex = entry.getKey();
-            List<Map<String, Object>> workouts = entry.getValue();
-            
-            Set<String> allMuscles = new HashSet<>();
-            
-            for (Map<String, Object> workout : workouts) {
-                String workoutName = (String) workout.get("workoutName");
-                if (workoutName != null && !workoutName.isEmpty()) {
-                    // Try to find matching equipment
-                    Optional<GymEquipment> equipmentOpt = gymEquipmentService.getEquipmentByName(workoutName);
-                    
-                    if (equipmentOpt.isPresent()) {
-                        String primaryMuscles = equipmentOpt.get().getPrimaryMuscles();
+        for (Map<String, Object> workout : workouts) {
+            String workoutName = (String) workout.get("workoutName");
+            if (workoutName != null && !workoutName.isEmpty()) {
+                // Try to find matching equipment
+                Optional<GymEquipment> equipmentOpt = gymEquipmentService.getEquipmentByName(workoutName);
+                
+                if (equipmentOpt.isPresent()) {
+                    String primaryMuscles = equipmentOpt.get().getPrimaryMuscles();
+                    if (primaryMuscles != null && !primaryMuscles.isEmpty()) {
+                        String[] muscles = primaryMuscles.split(",");
+                        for (String muscle : muscles) {
+                            String trimmed = muscle.trim();
+                            if (!trimmed.isEmpty()) {
+                                allMuscles.add(trimmed);
+                            }
+                        }
+                    }
+                } else {
+                    // Try to search by keyword in workout name
+                    List<GymEquipment> searchResults = gymEquipmentService.searchEquipment(workoutName);
+                    if (!searchResults.isEmpty()) {
+                        GymEquipment equipment = searchResults.get(0);
+                        String primaryMuscles = equipment.getPrimaryMuscles();
                         if (primaryMuscles != null && !primaryMuscles.isEmpty()) {
-                            // Split by comma and add each muscle
                             String[] muscles = primaryMuscles.split(",");
                             for (String muscle : muscles) {
                                 String trimmed = muscle.trim();
@@ -286,55 +310,32 @@ public class WeeklyPlanController {
                                 }
                             }
                         }
-                    } else {
-                        // Try to search by keyword in workout name (only take first match)
-                        List<GymEquipment> searchResults = gymEquipmentService.searchEquipment(workoutName);
-                        if (!searchResults.isEmpty()) {
-                            GymEquipment equipment = searchResults.get(0);
-                            String primaryMuscles = equipment.getPrimaryMuscles();
-                            if (primaryMuscles != null && !primaryMuscles.isEmpty()) {
-                                String[] muscles = primaryMuscles.split(",");
-                                for (String muscle : muscles) {
-                                    String trimmed = muscle.trim();
-                                    if (!trimmed.isEmpty()) {
-                                        allMuscles.add(trimmed);
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             }
-            
-            // Format muscles for display
-            if (!allMuscles.isEmpty()) {
-                // Get unique muscles and format nicely
-                List<String> sortedMuscles = new ArrayList<>(allMuscles);
-                Collections.sort(sortedMuscles);
-                
-                // Take first 3 most common or all if less than 3
-                String display = sortedMuscles.stream()
-                        .limit(3)
-                        .map(muscle -> {
-                            // Simplify muscle names for display
-                            if (muscle.contains("Chest")) return "Chest";
-                            if (muscle.contains("Back")) return "Back";
-                            if (muscle.contains("Leg")) return "Legs";
-                            if (muscle.contains("Shoulder")) return "Shoulders";
-                            if (muscle.contains("Arm") || muscle.contains("Bicep") || muscle.contains("Tricep")) return "Arms";
-                            if (muscle.contains("Core") || muscle.contains("Abs")) return "Core";
-                            if (muscle.contains("Cardiovascular")) return "Cardio";
-                            return muscle;
-                        })
-                        .distinct()
-                        .collect(Collectors.joining(", "));
-                
-                muscleGroupsByDay.put(dayIndex, display);
-            } else {
-                muscleGroupsByDay.put(dayIndex, "");
-            }
         }
         
-        return muscleGroupsByDay;
+        // Format muscles for display
+        if (!allMuscles.isEmpty()) {
+            List<String> sortedMuscles = new ArrayList<>(allMuscles);
+            Collections.sort(sortedMuscles);
+            
+            return sortedMuscles.stream()
+                    .limit(3)
+                    .map(muscle -> {
+                        if (muscle.contains("Chest")) return "Chest";
+                        if (muscle.contains("Back")) return "Back";
+                        if (muscle.contains("Leg")) return "Legs";
+                        if (muscle.contains("Shoulder")) return "Shoulders";
+                        if (muscle.contains("Arm") || muscle.contains("Bicep") || muscle.contains("Tricep")) return "Arms";
+                        if (muscle.contains("Core") || muscle.contains("Abs")) return "Core";
+                        if (muscle.contains("Cardiovascular")) return "Cardio";
+                        return muscle;
+                    })
+                    .distinct()
+                    .collect(Collectors.joining(", "));
+        }
+        
+        return "Training";
     }
 }

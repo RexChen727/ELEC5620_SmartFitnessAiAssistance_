@@ -22,6 +22,7 @@ public class AiAgentService {
     private final ConversationService conversationService;
     private final MessageService messageService;
     private final GymEquipmentService gymEquipmentService;
+    private final UserProfileService userProfileService;
 
     @Value("${ai.model.base-url}")
     private String aiModelBaseUrl;
@@ -48,12 +49,13 @@ public class AiAgentService {
 
     public AiAgentService(RestTemplate restTemplate, ObjectMapper objectMapper,
             ConversationService conversationService, MessageService messageService,
-            GymEquipmentService gymEquipmentService) {
+            GymEquipmentService gymEquipmentService, UserProfileService userProfileService) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.conversationService = conversationService;
         this.messageService = messageService;
         this.gymEquipmentService = gymEquipmentService;
+        this.userProfileService = userProfileService;
     }
 
     public ChatResponse chat(String agentType, String message, Long conversationId) {
@@ -106,13 +108,33 @@ public class AiAgentService {
             }
         }
 
+        // Add user profile context (if exists)
+        String profileContext = "";
+        try {
+            Long uid = conversation.getUser() != null ? conversation.getUser().getId() : 1L;
+            var opt = userProfileService.getByUserId(uid);
+            if (opt.isPresent()) {
+                var p = opt.get();
+                String gender = p.getGender() != null ? p.getGender() : "-";
+                String age = p.getAge() != null ? String.valueOf(p.getAge()) : "-";
+                String height = p.getHeightCm() != null ? String.valueOf(p.getHeightCm()) : "-";
+                String weight = p.getWeightKg() != null ? String.valueOf(p.getWeightKg()) : "-";
+                profileContext = "\n\nUser Profile:\n" +
+                        "- Gender: " + gender + "\n" +
+                        "- Age: " + age + "\n" +
+                        "- Height(cm): " + height + "\n" +
+                        "- Weight(kg): " + weight + "\n" +
+                        "Use this profile to tailor recommendations (intensity, volume, safety).";
+            }
+        } catch (Exception ignore) {}
+
         // Add fitness equipment knowledge base for fitness agent
         String equipmentKnowledge = "";
         if ("fitness".equals(agentType)) {
             equipmentKnowledge = "\n\nFitness Equipment Knowledge Base:\n" + getEquipmentKnowledgeBase();
         }
 
-        return basePrompt + equipmentKnowledge + "\n\nConversation History:\n" + context.toString() +
+        return basePrompt + profileContext + equipmentKnowledge + "\n\nConversation History:\n" + context.toString() +
                 "\nCurrent User Message: " + message + "\n\nPlease respond:";
     }
 
