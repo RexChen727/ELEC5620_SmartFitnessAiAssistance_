@@ -392,6 +392,13 @@ public class WeeklyPlanService {
     }
 
     /**
+     * Get plan by ID
+     */
+    public Optional<WeeklyPlan> getPlanById(Long planId) {
+        return weeklyPlanRepository.findById(planId);
+    }
+
+    /**
      * Toggle workout completion
      */
     public void toggleWorkoutCompletion(Long workoutId) {

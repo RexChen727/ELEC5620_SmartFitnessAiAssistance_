@@ -127,15 +127,13 @@ public class WeeklyPlanController {
     @GetMapping("/{planId}")
     public ResponseEntity<?> getPlanById(@PathVariable Long planId) {
         try {
-            WeeklyPlan plan = weeklyPlanService.getAllPlans(1L).stream()
-                    .filter(p -> p.getId().equals(planId))
-                    .findFirst()
-                    .orElse(null);
+            Optional<WeeklyPlan> planOpt = weeklyPlanService.getPlanById(planId);
             
-            if (plan == null) {
+            if (planOpt.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            return ResponseEntity.ok(convertToDTO(plan));
+            
+            return ResponseEntity.ok(convertToDTO(planOpt.get()));
         } catch (Exception e) {
             log.error("Error getting plan by ID", e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
