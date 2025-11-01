@@ -46,22 +46,33 @@ export const aiAgentService = {
         actualToday.setHours(0, 0, 0, 0);
         const todayStr = actualToday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         
+        // 计算每个日期在其所在周的 dayIndex（0=周一, 6=周日）
+        const getDayIndexForDate = (date) => {
+            const dateCopy = new Date(date);
+            dateCopy.setHours(0, 0, 0, 0);
+            const dayOfWeek = dateCopy.getDay(); // 0=周日, 1=周一, ..., 6=周六
+            return dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 转换为 0=周一, 6=周日
+        };
+
         // 构建周日期信息字符串
         let weekInfo = '';
-        let todayDayIndex = null;
+        let todayActualDayIndex = null;
         if (weekDates && weekDates.length === 7) {
             const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-            const weekInfoList = weekDates.map((date, idx) => {
+            const weekInfoList = weekDates.map((date, displayIdx) => {
                 const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 const isTodayDate = date.getTime() === actualToday.getTime();
+                // 计算该日期在其所在周的 dayIndex（0=周一, 6=周日）
+                const actualDayIndex = getDayIndexForDate(date);
                 if (isTodayDate) {
-                    todayDayIndex = idx;
+                    todayActualDayIndex = actualDayIndex;
                 }
-                return `  ${dayNames[idx]} (${dateStr})${isTodayDate ? ' ← TODAY' : ''} - dayIndex: ${idx}`;
+                return `  Position ${displayIdx}: ${dayNames[actualDayIndex]} (${dateStr})${isTodayDate ? ' ← TODAY' : ''} - dayIndex: ${actualDayIndex}`;
             }).join('\n');
-            weekInfo = `\nCurrent week dates:\n${weekInfoList}`;
-            if (todayDayIndex !== null) {
-                weekInfo += `\n**IMPORTANT**: TODAY is ${dayNames[todayDayIndex]} (${todayStr}) with dayIndex: ${todayDayIndex}`;
+            weekInfo = `\nDisplay dates (from today, next 7 days):\n${weekInfoList}`;
+            if (todayActualDayIndex !== null) {
+                const todayDayName = dayNames[todayActualDayIndex];
+                weekInfo += `\n**CRITICAL**: TODAY is ${todayDayName} (${todayStr}) with dayIndex: ${todayActualDayIndex} (NOT position 0 in display order, but actual dayIndex in its week!)`;
             }
         }
 
@@ -70,7 +81,7 @@ You are an intelligent AI fitness assistant that generates structured workout da
 
 User message: """${userMessage}"""
 Currently selected day: ${dayName} (dayIndex: ${dayIndex})
-**ACTUAL TODAY**: ${todayStr}${todayDayIndex !== null ? ` (dayIndex: ${todayDayIndex})` : ''}${weekInfo}
+**ACTUAL TODAY**: ${todayStr}${todayActualDayIndex !== null ? ` (dayIndex: ${todayActualDayIndex} in its week)` : ''}${weekInfo}
 
 Your job:
 - Understand whether the message is an ACTION command or general conversation.
@@ -115,7 +126,11 @@ Your job:
 
 ### LOGIC RULES
 
-1. **Date Extraction**
+1. **Date Extraction - IMPORTANT: dayIndex is relative to Monday of each date's week**
+   - dayIndex format: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday, 5=Saturday, 6=Sunday
+   - dayIndex is ALWAYS calculated relative to the Monday of the week that the date belongs to
+   - Example: If today is Sunday, its dayIndex is 6 (not 0, even though it's position 0 in display)
+   
    - If user mentions "Monday"/"周一", use dayIndex: 0
    - If user mentions "Tuesday"/"周二", use dayIndex: 1
    - If user mentions "Wednesday"/"周三", use dayIndex: 2
@@ -123,8 +138,8 @@ Your job:
    - If user mentions "Friday"/"周五", use dayIndex: 4
    - If user mentions "Saturday"/"周六", use dayIndex: 5
    - If user mentions "Sunday"/"周日", use dayIndex: 6
-   - If user mentions "tomorrow"/"明天", calculate based on TODAY's dayIndex (${todayDayIndex !== null ? todayDayIndex : 'see above'})
-   - **CRITICAL**: If user mentions "today"/"今天", use the ACTUAL TODAY's dayIndex (${todayDayIndex !== null ? todayDayIndex : 'see above'}), NOT the currently selected dayIndex
+   - If user mentions "tomorrow"/"明天", calculate the dayIndex of tomorrow's date based on its week
+   - **CRITICAL**: If user mentions "today"/"今天", use TODAY's actual dayIndex: ${todayActualDayIndex !== null ? todayActualDayIndex : 'calculate from date above'} (relative to Monday of today's week)
    - If NO day mentioned, use currently selected dayIndex: ${dayIndex}
 
 2. **Workout Plan Generation**

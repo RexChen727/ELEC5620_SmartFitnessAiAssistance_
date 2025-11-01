@@ -23,7 +23,7 @@ const WeeklyPlan = () => {
     const [showAddWorkoutDialog, setShowAddWorkoutDialog] = useState(false);
     const [showEditWorkoutDialog, setShowEditWorkoutDialog] = useState(false);
     const [selectedWorkout, setSelectedWorkout] = useState(null);
-    
+
     // AI 训练强度表单状态
     const [intensityForm, setIntensityForm] = useState({
         background: '',
@@ -225,7 +225,7 @@ const WeeklyPlan = () => {
         if (result.success) {
             setShowAddWorkoutDialog(false);
             alert('Workout added successfully!');
-        } else {
+            } else {
             throw new Error(result.error);
         }
     };
@@ -360,15 +360,15 @@ const WeeklyPlan = () => {
             {/* Navigation Bar */}
             <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-6 py-3">
-                    <div className="flex items-center justify-between">
-                        {/* Logo */}
-                        <div className="flex items-center space-x-3">
+                <div className="flex items-center justify-between">
+                    {/* Logo */}
+                    <div className="flex items-center space-x-3">
                             <Dumbbell className="text-purple-600" size={28} />
-                            <div>
-                                <h1 className="text-xl font-bold text-gray-900">FitAI</h1>
-                                <p className="text-xs text-gray-500">AI-Powered Training</p>
-                            </div>
+                        <div>
+                            <h1 className="text-xl font-bold text-gray-900">FitAI</h1>
+                            <p className="text-xs text-gray-500">AI-Powered Training</p>
                         </div>
+                    </div>
 
                     {/* Navigation Items */}
                     <div className="flex items-center space-x-1">
@@ -429,10 +429,10 @@ const WeeklyPlan = () => {
                             <LogOut size={18} />
                             <span className="text-sm font-medium">Logout</span>
                         </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </nav>
+            </nav>
 
             {/* Main Content */}
             <div className="max-w-6xl mx-auto px-6 py-4 min-h-[calc(100vh-120px)] flex flex-col">
@@ -469,9 +469,9 @@ const WeeklyPlan = () => {
 
                     {/* Week header with navigation */}
                     <div className="flex items-center justify-between mb-3">
-                        <div className="text-sm text-gray-600">
+                                <div className="text-sm text-gray-600">
                             <span className="font-semibold">Week:</span> {formatDisplayDateRange()}
-                        </div>
+                                </div>
                         <div className="flex items-center space-x-2">
                             <button onClick={goPrevWeek} className="p-2 rounded-lg hover:bg-gray-100">
                                 <ChevronLeft size={18} />
@@ -493,38 +493,38 @@ const WeeklyPlan = () => {
                             const isSelected = selectedDay === displayIndex;
                             
                             return (
-                                <button
+                            <button
                                     key={displayIndex}
                                     onClick={() => setSelectedDay(displayIndex)}
-                                    className={`p-4 rounded-lg border-2 transition-all ${
+                                className={`p-4 rounded-lg border-2 transition-all ${
                                         isSelected
-                                            ? 'border-purple-500 bg-purple-50'
+                                        ? 'border-purple-500 bg-purple-50'
                                             : isTodayDate
                                             ? 'border-blue-400 bg-blue-50'
-                                            : 'border-gray-200 hover:border-gray-300'
-                                    }`}
-                                >
-                                    <div className="text-center">
-                                        <div className={`text-sm font-medium ${
+                                        : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                            >
+                                <div className="text-center">
+                                    <div className={`text-sm font-medium ${
                                             isSelected 
                                                 ? 'text-purple-700' 
                                                 : isTodayDate 
                                                 ? 'text-blue-700' 
                                                 : 'text-gray-700'
-                                        }`}>
-                                            {day}
-                                        </div>
+                                    }`}>
+                                        {day}
+                                    </div>
                                         <div className={`text-xs mt-1 ${
                                             isTodayDate ? 'text-blue-600 font-semibold' : 'text-gray-500'
                                         }`}>
                                             {formatDayShort(dayDate)}
                                             {isTodayDate && <span className="ml-1">(Today)</span>}
-                                        </div>
-                                        {hasCompletedWorkout(actualDayIndex) && (
-                                            <CheckCircle size={16} className="text-green-500 mx-auto mt-2" />
-                                        )}
                                     </div>
-                                </button>
+                                        {hasCompletedWorkout(actualDayIndex) && (
+                                        <CheckCircle size={16} className="text-green-500 mx-auto mt-2" />
+                                    )}
+                                </div>
+                            </button>
                             );
                         })}
                     </div>
@@ -537,7 +537,7 @@ const WeeklyPlan = () => {
                         <div className="flex items-center justify-between mb-4 flex-shrink-0">
                             <h3 className="text-lg font-semibold text-gray-900">
                                 {days[getActualDayIndex(selectedDay)]} Workouts
-                            </h3>
+                                </h3>
                             <div className="flex items-center space-x-2">
                                 <button
                                     onClick={handleClearDayClick}
@@ -556,15 +556,15 @@ const WeeklyPlan = () => {
                                     <span>Add Workout</span>
                                 </button>
                             </div>
-                        </div>
+                            </div>
 
                         <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
                             {getWorkoutsForDay(getActualDayIndex(selectedDay)).length > 0 ? (
-                                <div className="space-y-3">
+                            <div className="space-y-3">
                                     {getWorkoutsForDay(getActualDayIndex(selectedDay)).map((workout) => (
                                         <div
                                             key={workout.id}
-                                            className={`p-4 rounded-lg border transition ${
+                                        className={`p-4 rounded-lg border transition ${
                                                 workout.completed
                                                     ? 'border-green-200 bg-green-50'
                                                     : 'border-gray-200 hover:border-gray-300'
@@ -615,7 +615,7 @@ const WeeklyPlan = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-center py-6 text-gray-500">No workouts scheduled</div>
+                            <div className="text-center py-6 text-gray-500">No workouts scheduled</div>
                             )}
                         </div>
                     </div>
@@ -637,16 +637,16 @@ const WeeklyPlan = () => {
                                                         <label className="flex items-center gap-2"><input type="radio" name="bg" checked={intensityForm.background==='onoff'} onChange={()=>setIntensityForm(v=>({...v, background:'onoff'}))}/> On and off (1–6 months total)</label>
                                                         <label className="flex items-center gap-2"><input type="radio" name="bg" checked={intensityForm.background==='consistent'} onChange={()=>setIntensityForm(v=>({...v, background:'consistent'}))}/> Consistent (6–24 months)</label>
                                                         <label className="flex items-center gap-2"><input type="radio" name="bg" checked={intensityForm.background==='experienced'} onChange={()=>setIntensityForm(v=>({...v, background:'experienced'}))}/> Experienced (2+ years)</label>
-                                                    </div>
-                                                </div>
-                                                <div>
+                        </div>
+                    </div>
+                                    <div>
                                                     <p className="text-sm font-medium mb-2">2) Time since last structured training</p>
                                                     <div className="space-y-1 text-sm">
                                                         <label className="flex items-center gap-2"><input type="radio" name="lt" checked={intensityForm.lastStructured==='within1w'} onChange={()=>setIntensityForm(v=>({...v, lastStructured:'within1w'}))}/> Within the last week</label>
                                                         <label className="flex items-center gap-2"><input type="radio" name="lt" checked={intensityForm.lastStructured==='1to4w'} onChange={()=>setIntensityForm(v=>({...v, lastStructured:'1to4w'}))}/> 1–4 weeks ago</label>
                                                         <label className="flex items-center gap-2"><input type="radio" name="lt" checked={intensityForm.lastStructured==='1to3m'} onChange={()=>setIntensityForm(v=>({...v, lastStructured:'1to3m'}))}/> 1–3 months ago</label>
                                                         <label className="flex items-center gap-2"><input type="radio" name="lt" checked={intensityForm.lastStructured==='over3m'} onChange={()=>setIntensityForm(v=>({...v, lastStructured:'over3m'}))}/> Over 3 months ago</label>
-                                                    </div>
+                                        </div>
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-medium mb-2">3) Height–weight range (rough BMI band)</p>
@@ -655,18 +655,18 @@ const WeeklyPlan = () => {
                                                         <label className="flex items-center gap-2"><input type="radio" name="bmi" checked={intensityForm.bmiBand==='typical'} onChange={()=>setIntensityForm(v=>({...v, bmiBand:'typical'}))}/> Typical range</label>
                                                         <label className="flex items-center gap-2"><input type="radio" name="bmi" checked={intensityForm.bmiBand==='abitHigh'} onChange={()=>setIntensityForm(v=>({...v, bmiBand:'abitHigh'}))}/> A bit higher</label>
                                                         <label className="flex items-center gap-2"><input type="radio" name="bmi" checked={intensityForm.bmiBand==='high'} onChange={()=>setIntensityForm(v=>({...v, bmiBand:'high'}))}/> Higher and building up</label>
-                                                    </div>
-                                                </div>
-                                                <div>
+                                        </div>
+                                    </div>
+                                    <div>
                                                     <p className="text-sm font-medium mb-2">Quick check (optional)</p>
                                                     <div className="space-y-1 text-sm">
                                                         <label className="flex items-center gap-2"><input type="checkbox" checked={intensityForm.flags.lowSleep} onChange={(e)=>setIntensityForm(v=>({...v, flags:{...v.flags, lowSleep:e.target.checked}}))}/> I slept &lt; 6 hours last night</label>
                                                         <label className="flex items-center gap-2"><input type="checkbox" checked={intensityForm.flags.sore} onChange={(e)=>setIntensityForm(v=>({...v, flags:{...v.flags, sore:e.target.checked}}))}/> I feel sore or unusually tired today</label>
                                                         <label className="flex items-center gap-2"><input type="checkbox" checked={intensityForm.flags.pain} onChange={(e)=>setIntensityForm(v=>({...v, flags:{...v.flags, pain:e.target.checked}}))}/> I have pain/discomfort beyond normal soreness</label>
-                                                    </div>
+                                        </div>
                                                 </div>
                                                 <button onClick={handleSubmitIntensity} className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">Submit</button>
-                                            </div>
+                                                </div>
                                         )
                                     };
                                 }
@@ -679,16 +679,16 @@ const WeeklyPlan = () => {
                                             <div className="mt-3 space-y-3">
                                                 {objectives.map(obj => (
                                                     <label key={obj} className="flex items-center gap-2 text-sm">
-                                                        <input
-                                                            type="checkbox"
+                                                            <input
+                                                                type="checkbox"
                                                             checked={selectedObjectives.includes(obj)}
                                                             onChange={() => toggleObjective(obj)}
                                                         />
                                                         {obj}
-                                                    </label>
-                                                ))}
+                                                        </label>
+                                                    ))}
                                                 <button onClick={handleSubmitObjectives} className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">Submit</button>
-                                            </div>
+                                        </div>
                                         )
                                     };
                                 }
