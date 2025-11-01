@@ -165,18 +165,31 @@ public class AiAgentService {
             // 判断是否是 Ollama (localhost:11434)
             if (aiModelBaseUrl.contains("localhost:11434") || aiModelBaseUrl.contains("127.0.0.1:11434")) {
                 url = aiModelBaseUrl + "/api/chat";
+                // Ollama 需要设置 stream=false 来获得完整响应
+                requestBody.put("stream", false);
             } else {
                 url = aiModelBaseUrl + "/chat";
             }
         }
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-        String response = restTemplate.postForObject(url, entity, String.class);
+        
+        log.info("Calling AI model at URL: {}", url);
+        log.info("Request body: {}", requestBody);
+        
+        String response;
+        try {
+            response = restTemplate.postForObject(url, entity, String.class);
+        } catch (Exception e) {
+            log.error("Error calling AI model at URL: {}", url, e);
+            throw new RuntimeException("Failed to call AI model: " + e.getMessage(), e);
+        }
 
         log.info("Raw AI model response: {}", response);
 
-        if (response == null) {
-            throw new RuntimeException("AI model returned null response");
+        if (response == null || response.trim().isEmpty()) {
+            log.error("AI model returned null or empty response");
+            throw new RuntimeException("AI model returned null or empty response");
         }
 
         StringBuilder fullResponse = new StringBuilder();
@@ -208,30 +221,50 @@ public class AiAgentService {
                         fullResponse.append(firstChoice.get("message").get("content").asText());
                     }
                 }
-            } else if (jsonNode.has("message") && !response.contains("\n")) {
+            } else if (jsonNode.has("message")) {
                 // Ollama格式的非流式响应（单个JSON对象）
                 JsonNode message = jsonNode.get("message");
                 if (message.has("content")) {
                     fullResponse.append(message.get("content").asText());
+                } else {
+                    log.warn("Ollama response has 'message' but no 'content' field");
                 }
             } else {
-                // Ollama格式的流式响应
-                String[] lines = response.split("\n");
-                for (String line : lines) {
-                    if (!line.trim().isEmpty()) {
-                        JsonNode lineNode = objectMapper.readTree(line);
-                        if (lineNode.has("message") && lineNode.get("message").has("content")) {
-                            fullResponse.append(lineNode.get("message").get("content").asText());
+                // 尝试处理流式响应（多行JSON）
+                if (response.contains("\n")) {
+                    String[] lines = response.split("\n");
+                    for (String line : lines) {
+                        if (!line.trim().isEmpty()) {
+                            try {
+                                JsonNode lineNode = objectMapper.readTree(line);
+                                if (lineNode.has("message") && lineNode.get("message").has("content")) {
+                                    fullResponse.append(lineNode.get("message").get("content").asText());
+                                }
+                            } catch (Exception lineError) {
+                                // 忽略无法解析的行
+                                log.debug("Skipping unparseable line: {}", line);
+                            }
                         }
                     }
+                } else {
+                    log.warn("Unknown response format. Response: {}", response);
+                    // 如果无法解析，返回原始响应的一部分
+                    fullResponse.append(response.substring(0, Math.min(500, response.length())));
                 }
             }
         } catch (Exception e) {
-            log.error("Error parsing AI model response", e);
-            throw new RuntimeException("Failed to parse AI response", e);
+            log.error("Error parsing AI model response. Response was: {}", response, e);
+            throw new RuntimeException("Failed to parse AI response: " + e.getMessage(), e);
         }
 
         log.info("Extracted AI response: {}", fullResponse);
-        return fullResponse.toString();
+        
+        String finalResponse = fullResponse.toString();
+        if (finalResponse == null || finalResponse.trim().isEmpty()) {
+            log.error("Extracted response is empty. Original response was: {}", response);
+            throw new RuntimeException("AI model response is empty. Please check Ollama service and model configuration.");
+        }
+        
+        return finalResponse;
     }
 }
