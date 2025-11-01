@@ -2,6 +2,7 @@ package com.aiagent.main.controller;
 
 import com.aiagent.main.entity.MonthlyReport;
 import com.aiagent.main.service.MonthlyReportService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/monthly-reports")
 @CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5174", "http://localhost:5175"})
+@Slf4j
 public class MonthlyReportController {
 
     @Autowired
@@ -64,7 +66,11 @@ public class MonthlyReportController {
             MonthlyReport generatedReport = monthlyReportService.generateMonthlyReportFromTrainingLogs(userId, reportMonth);
             return ResponseEntity.ok(generatedReport);
         } catch (Exception e) {
-            return ResponseEntity.status(500).build();
+            log.error("Error fetching monthly report for user {} in {}/{}", userId, year, month, e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("details", e.getClass().getSimpleName());
+            return ResponseEntity.status(500).body(error);
         }
     }
 
@@ -159,7 +165,11 @@ public class MonthlyReportController {
             
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
-            return ResponseEntity.status(500).build();
+            log.error("Error fetching monthly statistics for user {}", userId, e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("details", e.getClass().getSimpleName());
+            return ResponseEntity.status(500).body(error);
         }
     }
 
