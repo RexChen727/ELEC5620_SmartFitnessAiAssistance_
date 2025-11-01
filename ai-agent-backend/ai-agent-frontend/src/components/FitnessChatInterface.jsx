@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, ArrowRight, CheckCircle, AlertCircle, Info, Loader, MessageCircle, X, Send, Search, Lightbulb, Star, Home, Calendar, BarChart3, Settings, LogOut, User } from 'lucide-react';
+import { Dumbbell, ArrowRight, CheckCircle, AlertCircle, Info, Loader, MessageCircle, X, Send, Search, Lightbulb, Star, Home, Calendar, BarChart3, Settings } from 'lucide-react';
 import { useUser } from './UserContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -7,12 +7,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 const NavigationBar = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, logout } = useUser();
-
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-    };
     
     const navigationItems = [
         { path: '/home', icon: Home, label: 'Home', key: 'home' },
@@ -62,19 +56,15 @@ const NavigationBar = () => {
                     })}
                 </div>
 
-                {/* User Info and Actions */}
+                {/* AI Assistant */}
                 <div className="flex items-center space-x-3">
-                    <div className="flex items-center space-x-2 text-sm text-gray-700">
-                        <User size={16} />
-                        <span>{user?.username || 'User'}</span>
-                    </div>
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                    >
-                        <LogOut size={18} />
-                        <span className="text-sm font-medium">Logout</span>
+                    <button className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
+                        <MessageCircle size={18} />
+                        <span className="text-sm font-medium">AI Assistant</span>
                     </button>
+                    <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                        <span className="text-xs font-bold text-white">1</span>
+                    </div>
                 </div>
             </div>
         </nav>
@@ -86,8 +76,8 @@ const ExerciseSubstitutionCard = ({ onSearch, onPopularClick, loading }) => {
     const [searchTerm, setSearchTerm] = useState('');
     
     const popularExercises = [
-        'Barbell Bench Press', 'Barbell Squats', 'Barbell Rows', 'Pull-up Bar', 
-        'Barbell Shoulder Press', 'Leg Press Machine', 'Barbell Curls', 'Dips'
+        'Bench Press', 'Squats', 'Deadlifts', 'Pull-ups', 
+        'Shoulder Press', 'Rows', 'Lunges', 'Planks'
     ];
 
     const handleSearch = () => {
@@ -295,8 +285,6 @@ const TrainingQuestionWindow = ({ isOpen, onClose }) => {
     const [loading, setLoading] = useState(false);
     const [conversationId, setConversationId] = useState(null);
 
-    const { user } = useUser();
-    
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!question.trim()) return;
@@ -310,8 +298,7 @@ const TrainingQuestionWindow = ({ isOpen, onClose }) => {
                 },
                 body: JSON.stringify({
                     message: `Training Question Consultation: ${question}`,
-                    conversationId: conversationId,
-                    userId: user?.id || null
+                    conversationId: conversationId
                 }),
             });
 
@@ -441,7 +428,6 @@ const FitnessChatInterface = () => {
     const [alternatives, setAlternatives] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isQuestionWindowOpen, setIsQuestionWindowOpen] = useState(false);
-    const [conversationId, setConversationId] = useState(null);
 
     useEffect(() => {
         if (!user) {
@@ -509,8 +495,7 @@ const FitnessChatInterface = () => {
                 },
                 body: JSON.stringify({
                     message: `${equipment.name} is occupied, please provide detailed recommendations for each alternative exercise separately, format as follows:\n\n1. [Alternative Exercise Name]\n   - Sets/Reps: [Specific recommendations]\n   - Weight Recommendation: [Specific recommendations]\n   - Technique: [Detailed instructions]\n   - Precautions: [Safety reminders]\n   - Training Effect Comparison: [Differences from original equipment]\n\n2. [Next Alternative Exercise Name]\n   - Sets/Reps: [Specific recommendations]\n   - Weight Recommendation: [Specific recommendations]\n   - Technique: [Detailed instructions]\n   - Precautions: [Safety reminders]\n   - Training Effect Comparison: [Differences from original equipment]\n\nPlease provide complete independent information for each alternative exercise.`,
-                    conversationId: conversationId,
-                    userId: user?.id || null
+                    conversationId: null
                 }),
             });
 
@@ -518,9 +503,6 @@ const FitnessChatInterface = () => {
                 const data = await response.json();
                 const alternatives = parseDetailedAlternatives(data.response, equipment);
                 setAlternatives(alternatives);
-                if (data.conversationId && !conversationId) {
-                    setConversationId(data.conversationId);
-                }
             } else {
                 setAlternatives([]);
             }

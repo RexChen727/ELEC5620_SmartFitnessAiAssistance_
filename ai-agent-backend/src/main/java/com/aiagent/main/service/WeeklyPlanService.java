@@ -392,11 +392,48 @@ public class WeeklyPlanService {
     }
 
     /**
+     * Get plan by ID
+     */
+    public Optional<WeeklyPlan> getPlanById(Long planId) {
+        return weeklyPlanRepository.findById(planId);
+    }
+
+    /**
+     * Get plan by ID with user verification
+     */
+    public Optional<WeeklyPlan> getPlanById(Long planId, Long userId) {
+        Optional<WeeklyPlan> planOpt = weeklyPlanRepository.findById(planId);
+        if (planOpt.isPresent()) {
+            WeeklyPlan plan = planOpt.get();
+            if (!plan.getUser().getId().equals(userId)) {
+                throw new RuntimeException("Plan does not belong to this user");
+            }
+        }
+        return planOpt;
+    }
+
+    /**
      * Toggle workout completion
      */
     public void toggleWorkoutCompletion(Long workoutId) {
         WeeklyPlanWorkout workout = weeklyPlanWorkoutRepository.findById(workoutId)
                 .orElseThrow(() -> new RuntimeException("Workout not found"));
+        workout.setCompleted(!workout.getCompleted());
+        weeklyPlanWorkoutRepository.save(workout);
+    }
+
+    /**
+     * Toggle workout completion with user verification
+     */
+    public void toggleWorkoutCompletion(Long workoutId, Long userId) {
+        WeeklyPlanWorkout workout = weeklyPlanWorkoutRepository.findById(workoutId)
+                .orElseThrow(() -> new RuntimeException("Workout not found"));
+        
+        // Verify the workout belongs to the user's plan
+        if (!workout.getWeeklyPlan().getUser().getId().equals(userId)) {
+            throw new RuntimeException("Workout does not belong to this user");
+        }
+        
         workout.setCompleted(!workout.getCompleted());
         weeklyPlanWorkoutRepository.save(workout);
     }
@@ -417,6 +454,11 @@ public class WeeklyPlanService {
     public WeeklyPlan copyToNextWeek(Long userId, Long currentPlanId, String action) {
         WeeklyPlan currentPlan = weeklyPlanRepository.findById(currentPlanId)
                 .orElseThrow(() -> new RuntimeException("Current plan not found"));
+        
+        // Verify the plan belongs to the user
+        if (!currentPlan.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Plan does not belong to this user");
+        }
         
         LocalDate nextWeekStart = currentPlan.getEndDate().plusDays(1);
         LocalDate nextWeekEnd = nextWeekStart.plusDays(6);
@@ -469,6 +511,11 @@ public class WeeklyPlanService {
             // Add incomplete workouts to existing next week plan
             nextWeekPlan = nextWeekPlanOpt.get();
             
+            // Verify the next week plan belongs to the user
+            if (!nextWeekPlan.getUser().getId().equals(userId)) {
+                throw new RuntimeException("Next week plan does not belong to this user");
+            }
+            
             for (WeeklyPlanWorkout workout : incompleteWorkouts) {
                 WeeklyPlanWorkout newWorkout = new WeeklyPlanWorkout();
                 newWorkout.setWeeklyPlan(nextWeekPlan);
@@ -515,6 +562,21 @@ public class WeeklyPlanService {
     public void deleteWeeklyPlan(Long planId) {
         weeklyPlanRepository.deleteById(planId);
     }
+
+    /**
+     * Delete a weekly plan with user verification
+     */
+    public void deleteWeeklyPlan(Long planId, Long userId) {
+        WeeklyPlan plan = weeklyPlanRepository.findById(planId)
+                .orElseThrow(() -> new RuntimeException("Plan not found"));
+        
+        // Verify the plan belongs to the user
+        if (!plan.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Plan does not belong to this user");
+        }
+        
+        weeklyPlanRepository.deleteById(planId);
+    }
     
     /**
      * Check if there is a plan for the current week (today + 7 days)
@@ -552,6 +614,41 @@ public class WeeklyPlanService {
         // First, load the plan with workouts
         WeeklyPlan plan = weeklyPlanRepository.findById(planId)
                 .orElseThrow(() -> new RuntimeException("Plan not found"));
+        
+        // Get workouts for the specific day
+        List<WeeklyPlanWorkout> allWorkouts = weeklyPlanWorkoutRepository.findByWeeklyPlanId(planId);
+        log.info("Total workouts for planId={}: {}", planId, allWorkouts.size());
+        
+        List<WeeklyPlanWorkout> workoutsToDelete = allWorkouts
+                .stream()
+                .filter(w -> w.getDayIndex().equals(dayIndex))
+                .collect(java.util.stream.Collectors.toList());
+        
+        log.info("Workouts to delete for dayIndex={}: {}", dayIndex, workoutsToDelete.size());
+        
+        // Delete the workouts
+        if (!workoutsToDelete.isEmpty()) {
+            weeklyPlanWorkoutRepository.deleteAll(workoutsToDelete);
+            log.info("Successfully deleted {} workouts", workoutsToDelete.size());
+        } else {
+            log.warn("No workouts found for dayIndex={}", dayIndex);
+        }
+    }
+
+    /**
+     * Clear workouts for a specific day in a plan with user verification
+     */
+    public void clearDayWorkouts(Long planId, Integer dayIndex, Long userId) {
+        log.info("Clearing workouts for planId={}, dayIndex={}, userId={}", planId, dayIndex, userId);
+        
+        // First, load the plan with workouts
+        WeeklyPlan plan = weeklyPlanRepository.findById(planId)
+                .orElseThrow(() -> new RuntimeException("Plan not found"));
+        
+        // Verify the plan belongs to the user
+        if (!plan.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Plan does not belong to this user");
+        }
         
         // Get workouts for the specific day
         List<WeeklyPlanWorkout> allWorkouts = weeklyPlanWorkoutRepository.findByWeeklyPlanId(planId);
@@ -619,6 +716,84 @@ public class WeeklyPlanService {
     }
 
     /**
+     * Add a new workout to a plan with user verification
+     * If planId is not provided or null, automatically get or create current week's plan
+     */
+    public WeeklyPlanWorkout addWorkout(Map<String, Object> workoutData, Long userId) {
+        try {
+            WeeklyPlan plan;
+            
+            // Check if planId is provided
+            if (workoutData.get("planId") != null && !workoutData.get("planId").toString().isEmpty()) {
+                // Use provided planId
+                Long planId = Long.parseLong(workoutData.get("planId").toString());
+                plan = weeklyPlanRepository.findById(planId)
+                        .orElseThrow(() -> new RuntimeException("Plan not found"));
+
+                // Verify the plan belongs to the user
+                if (!plan.getUser().getId().equals(userId)) {
+                    throw new RuntimeException("Plan does not belong to this user");
+                }
+            } else {
+                // No planId provided, get or create current week's plan
+                User user = userService.findById(userId)
+                        .orElseThrow(() -> new RuntimeException("User not found"));
+                
+                LocalDate today = LocalDate.now();
+                Optional<WeeklyPlan> existingPlan = weeklyPlanRepository.findCurrentPlan(userId, today);
+                
+                if (existingPlan.isPresent()) {
+                    plan = existingPlan.get();
+                } else {
+                    // Create a new empty plan for current week
+                    LocalDate monday = today.minusDays((today.getDayOfWeek().getValue() - 1) % 7);
+                    LocalDate sunday = monday.plusDays(6);
+                    
+                    plan = new WeeklyPlan();
+                    plan.setUser(user);
+                    plan.setStartDate(monday);
+                    plan.setEndDate(sunday);
+                    plan = weeklyPlanRepository.save(plan);
+                    log.info("Created new weekly plan {} for user {} to add workout", plan.getId(), userId);
+                }
+            }
+
+            // Create new workout
+            WeeklyPlanWorkout workout = new WeeklyPlanWorkout();
+            workout.setWeeklyPlan(plan);
+            workout.setDayIndex(Integer.parseInt(workoutData.get("dayIndex").toString()));
+            workout.setWorkoutName(workoutData.get("workoutName").toString());
+            workout.setCompleted(false);
+
+            // Set optional fields
+            if (workoutData.get("sets") != null) {
+                workout.setSets(Integer.parseInt(workoutData.get("sets").toString()));
+            }
+            if (workoutData.get("reps") != null) {
+                workout.setReps(Integer.parseInt(workoutData.get("reps").toString()));
+            }
+            if (workoutData.get("weight") != null && !workoutData.get("weight").toString().isEmpty()) {
+                workout.setWeight(workoutData.get("weight").toString());
+            }
+            if (workoutData.get("duration") != null && !workoutData.get("duration").toString().isEmpty()) {
+                workout.setDuration(workoutData.get("duration").toString());
+            }
+            if (workoutData.get("notes") != null && !workoutData.get("notes").toString().isEmpty()) {
+                workout.setNotes(workoutData.get("notes").toString());
+            }
+
+            // Save workout
+            WeeklyPlanWorkout savedWorkout = weeklyPlanWorkoutRepository.save(workout);
+            log.info("Added workout {} to plan {}", savedWorkout.getId(), plan.getId());
+
+            return savedWorkout;
+        } catch (Exception e) {
+            log.error("Error adding workout", e);
+            throw new RuntimeException("Failed to add workout: " + e.getMessage());
+        }
+    }
+
+    /**
      * Update an existing workout
      */
     public WeeklyPlanWorkout updateWorkout(Long workoutId, Map<String, Object> workoutData) {
@@ -626,6 +801,74 @@ public class WeeklyPlanService {
             // Get existing workout
             WeeklyPlanWorkout workout = weeklyPlanWorkoutRepository.findById(workoutId)
                     .orElseThrow(() -> new RuntimeException("Workout not found"));
+
+            // Update workout fields
+            if (workoutData.get("workoutName") != null) {
+                workout.setWorkoutName(workoutData.get("workoutName").toString());
+            }
+            
+            if (workoutData.get("dayIndex") != null) {
+                workout.setDayIndex(Integer.parseInt(workoutData.get("dayIndex").toString()));
+            }
+
+            if (workoutData.get("sets") != null) {
+                workout.setSets(Integer.parseInt(workoutData.get("sets").toString()));
+            } else if (workoutData.containsKey("sets")) {
+                workout.setSets(null);
+            }
+
+            if (workoutData.get("reps") != null) {
+                workout.setReps(Integer.parseInt(workoutData.get("reps").toString()));
+            } else if (workoutData.containsKey("reps")) {
+                workout.setReps(null);
+            }
+
+            if (workoutData.get("weight") != null && !workoutData.get("weight").toString().isEmpty()) {
+                workout.setWeight(workoutData.get("weight").toString());
+            } else {
+                workout.setWeight(null);
+            }
+
+            if (workoutData.get("duration") != null && !workoutData.get("duration").toString().isEmpty()) {
+                workout.setDuration(workoutData.get("duration").toString());
+            } else {
+                workout.setDuration(null);
+            }
+
+            if (workoutData.get("notes") != null && !workoutData.get("notes").toString().isEmpty()) {
+                workout.setNotes(workoutData.get("notes").toString());
+            } else {
+                workout.setNotes(null);
+            }
+
+            if (workoutData.get("completed") != null) {
+                workout.setCompleted(Boolean.parseBoolean(workoutData.get("completed").toString()));
+            }
+
+            // Save updated workout
+            WeeklyPlanWorkout updatedWorkout = weeklyPlanWorkoutRepository.save(workout);
+            log.info("Updated workout {}", workoutId);
+
+            return updatedWorkout;
+        } catch (Exception e) {
+            log.error("Error updating workout", e);
+            throw new RuntimeException("Failed to update workout: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Update an existing workout with user verification
+     */
+    public WeeklyPlanWorkout updateWorkout(Long workoutId, Map<String, Object> workoutData, Long userId) {
+        try {
+            // Get existing workout
+            WeeklyPlanWorkout workout = weeklyPlanWorkoutRepository.findById(workoutId)
+                    .orElseThrow(() -> new RuntimeException("Workout not found"));
+
+            // Verify the workout belongs to the user's plan
+            if (!workout.getWeeklyPlan().getUser().getId().equals(userId)) {
+                throw new RuntimeException("Workout does not belong to this user");
+            }
 
             // Update workout fields
             if (workoutData.get("workoutName") != null) {

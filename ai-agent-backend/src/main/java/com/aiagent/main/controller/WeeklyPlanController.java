@@ -76,9 +76,9 @@ public class WeeklyPlanController {
      * Toggle workout completion
      */
     @PutMapping("/workout/{workoutId}/toggle")
-    public ResponseEntity<?> toggleWorkoutCompletion(@PathVariable Long workoutId) {
+    public ResponseEntity<?> toggleWorkoutCompletion(@PathVariable Long workoutId, @RequestParam Long userId) {
         try {
-            weeklyPlanService.toggleWorkoutCompletion(workoutId);
+            weeklyPlanService.toggleWorkoutCompletion(workoutId, userId);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
             log.error("Error toggling workout completion", e);
@@ -125,17 +125,15 @@ public class WeeklyPlanController {
      * Get plan by ID
      */
     @GetMapping("/{planId}")
-    public ResponseEntity<?> getPlanById(@PathVariable Long planId) {
+    public ResponseEntity<?> getPlanById(@PathVariable Long planId, @RequestParam Long userId) {
         try {
-            WeeklyPlan plan = weeklyPlanService.getAllPlans(1L).stream()
-                    .filter(p -> p.getId().equals(planId))
-                    .findFirst()
-                    .orElse(null);
+            Optional<WeeklyPlan> planOpt = weeklyPlanService.getPlanById(planId, userId);
             
-            if (plan == null) {
+            if (planOpt.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
-            return ResponseEntity.ok(convertToDTO(plan));
+            
+            return ResponseEntity.ok(convertToDTO(planOpt.get()));
         } catch (Exception e) {
             log.error("Error getting plan by ID", e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -146,9 +144,9 @@ public class WeeklyPlanController {
      * Delete a weekly plan
      */
     @DeleteMapping("/{planId}")
-    public ResponseEntity<?> deleteWeeklyPlan(@PathVariable Long planId) {
+    public ResponseEntity<?> deleteWeeklyPlan(@PathVariable Long planId, @RequestParam Long userId) {
         try {
-            weeklyPlanService.deleteWeeklyPlan(planId);
+            weeklyPlanService.deleteWeeklyPlan(planId, userId);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
             log.error("Error deleting weekly plan", e);
@@ -174,9 +172,9 @@ public class WeeklyPlanController {
      * Clear workouts for a specific day
      */
     @DeleteMapping("/clear-day")
-    public ResponseEntity<?> clearDayWorkouts(@RequestParam Long planId, @RequestParam Integer dayIndex) {
+    public ResponseEntity<?> clearDayWorkouts(@RequestParam Long planId, @RequestParam Integer dayIndex, @RequestParam Long userId) {
         try {
-            weeklyPlanService.clearDayWorkouts(planId, dayIndex);
+            weeklyPlanService.clearDayWorkouts(planId, dayIndex, userId);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
             log.error("Error clearing day workouts", e);
@@ -188,9 +186,9 @@ public class WeeklyPlanController {
      * Add a new workout to a plan
      */
     @PostMapping("/add-workout")
-    public ResponseEntity<?> addWorkout(@RequestBody Map<String, Object> workoutData) {
+    public ResponseEntity<?> addWorkout(@RequestBody Map<String, Object> workoutData, @RequestParam Long userId) {
         try {
-            WeeklyPlanWorkout workout = weeklyPlanService.addWorkout(workoutData);
+            WeeklyPlanWorkout workout = weeklyPlanService.addWorkout(workoutData, userId);
             return ResponseEntity.ok(Map.of("success", true, "workoutId", workout.getId()));
         } catch (Exception e) {
             log.error("Error adding workout", e);
@@ -202,9 +200,9 @@ public class WeeklyPlanController {
      * Update an existing workout
      */
     @PutMapping("/workout/{workoutId}")
-    public ResponseEntity<?> updateWorkout(@PathVariable Long workoutId, @RequestBody Map<String, Object> workoutData) {
+    public ResponseEntity<?> updateWorkout(@PathVariable Long workoutId, @RequestBody Map<String, Object> workoutData, @RequestParam Long userId) {
         try {
-            WeeklyPlanWorkout workout = weeklyPlanService.updateWorkout(workoutId, workoutData);
+            WeeklyPlanWorkout workout = weeklyPlanService.updateWorkout(workoutId, workoutData, userId);
             return ResponseEntity.ok(Map.of("success", true, "workoutId", workout.getId()));
         } catch (Exception e) {
             log.error("Error updating workout", e);
