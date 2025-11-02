@@ -206,13 +206,6 @@ const MonthlyReport = () => {
                             <span className="text-sm font-medium">Home</span>
                         </button>
                         <button
-                            onClick={() => navigate('/ai-plan')}
-                            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                        >
-                            <Star size={18} />
-                            <span className="text-sm font-medium">AI Fitness Plan</span>
-                        </button>
-                        <button
                             onClick={() => navigate('/weekly-plan')}
                             className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                         >

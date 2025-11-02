@@ -24,7 +24,7 @@ function App() {
                         <Route path="home" element={<FitAIHomepage />} />
                         {/* Remove /chat actual UI and redirect to /home if visited */}
                         <Route path="chat" element={<Navigate to="/home" replace />} />
-                        <Route path="ai-plan" element={<AIFitnessPlan />} />
+                        {/* <Route path="ai-plan" element={<AIFitnessPlan />} /> */} {/* Hidden */}
                         <Route path="weekly-plan" element={<WeeklyPlan />} />
                         <Route path="training-log" element={<TrainingLog />} />
                         <Route path="monthly-report" element={<MonthlyReport />} />

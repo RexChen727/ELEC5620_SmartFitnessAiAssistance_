@@ -15,14 +15,6 @@ const FitAIHomepage = () => {
 
     const moduleCards = [
         {
-            title: 'AI Fitness Plan',
-            description: 'Generate personalized workout plans with AI',
-            icon: Star,
-            path: '/ai-plan',
-            color: 'bg-blue-500',
-            hoverColor: 'hover:bg-blue-600'
-        },
-        {
             title: 'Weekly Plan',
             description: 'View and edit your 7-day workout schedule',
             icon: Calendar,
@@ -72,13 +64,6 @@ const FitAIHomepage = () => {
                         >
                             <Star size={18} />
                             <span className="text-sm font-medium">Home</span>
-                        </button>
-                        <button
-                            onClick={() => navigate('/ai-plan')}
-                            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                        >
-                            <Star size={18} />
-                            <span className="text-sm font-medium">AI Fitness Plan</span>
                         </button>
                         <button
                             onClick={() => navigate('/weekly-plan')}
@@ -135,22 +120,7 @@ const FitAIHomepage = () => {
                         <div className="flex-1">
                             <h2 className="text-3xl font-bold mb-2">AI Assistant</h2>
                             <p className="text-lg text-purple-100 mb-6">Your personalized AI fitness coach</p>
-                            <div className="flex space-x-4">
-                                <button
-                                    onClick={() => navigate('/ai-plan')}
-                                    className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors flex items-center space-x-2"
-                                >
-                                    <MessageCircle size={20} />
-                                    <span>Ask AI</span>
-                                </button>
-                                <button
-                                    onClick={() => navigate('/ai-plan')}
-                                    className="border-2 border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white hover:text-purple-600 transition-colors flex items-center space-x-2"
-                                >
-                                    <Star size={20} />
-                                    <span>Generate Fitness Plan</span>
-                                </button>
-                            </div>
+                            {/* AI Fitness Plan buttons hidden */}
                         </div>
                         <div className="hidden md:block">
                             <div className="w-32 h-32 bg-white bg-opacity-20 rounded-full flex items-center justify-center">

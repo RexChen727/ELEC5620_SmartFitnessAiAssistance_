@@ -15,7 +15,7 @@ const MainLayout = () => {
 
     const navigationItems = [
         { path: '/home', icon: Star, label: 'Home', key: 'home' },
-        { path: '/ai-plan', icon: Star, label: 'AI Fitness Plan', key: 'ai-plan' },
+        // { path: '/ai-plan', icon: Star, label: 'AI Fitness Plan', key: 'ai-plan' }, // Hidden
         { path: '/weekly-plan', icon: Calendar, label: 'Weekly Plan', key: 'weekly-plan' },
         { path: '/training-log', icon: Dumbbell, label: 'Training Log', key: 'training-log' },
         { path: '/monthly-report', icon: BarChart3, label: 'Monthly Report', key: 'monthly-report' },
