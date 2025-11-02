@@ -12,7 +12,7 @@ node_modules/
 .idea/
 
 # Env / secrets
-**/application.properties
+# **/application.properties  # Commented out - allowing credentials in repo
 **/.env
 .env
 
