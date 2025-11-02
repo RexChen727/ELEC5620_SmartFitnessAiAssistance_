@@ -16,9 +16,16 @@ public class UserService {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
-        // Set default role if not provided
+        // Set default role if not provided, and ensure it's uppercase to match database constraint
         if (user.getRole() == null || user.getRole().isEmpty()) {
             user.setRole("USER");
+        } else {
+            // Convert role to uppercase to match database constraint (chk_role: 'USER', 'ADMIN', 'TRAINER')
+            user.setRole(user.getRole().toUpperCase());
+        }
+        // Validate role is one of the allowed values
+        if (!user.getRole().equals("USER") && !user.getRole().equals("ADMIN") && !user.getRole().equals("TRAINER")) {
+            throw new RuntimeException("Invalid role. Allowed values: USER, ADMIN, TRAINER");
         }
         return userRepository.save(user);
     }
