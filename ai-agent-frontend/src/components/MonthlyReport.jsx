@@ -141,10 +141,13 @@ const MonthlyReport = () => {
         try {
             const prompt = `You are a fitness analyst. Based on this monthly data, provide concise, actionable insights. Use encouraging tone and at most 120 words. Data: totalWorkouts=${stats.totalWorkouts}, totalMinutes=${stats.totalMinutes}, caloriesBurned=${stats.caloriesBurned}, currentStreak=${stats.currentStreak}, adherenceRate=${stats.adherenceRate}. TopExercises=${JSON.stringify(topExercises)}. WeeklyActivity=${JSON.stringify(weeklyActivityData)}`;
 
-            const chatRes = await fetch('/api/chat/analytical', {
+            const chatRes = await fetch(`/api/chat/analytical?userId=${user.id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: prompt })
+                body: JSON.stringify({ 
+                    message: prompt,
+                    userId: user.id
+                })
             });
             if (chatRes.ok) {
                 const chat = await chatRes.json();

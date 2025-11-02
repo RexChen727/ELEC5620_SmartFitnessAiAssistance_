@@ -2,6 +2,7 @@ package com.aiagent.main.controller;
 
 import com.aiagent.main.entity.MonthlyReport;
 import com.aiagent.main.service.MonthlyReportService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/monthly-reports")
 @CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5174", "http://localhost:5175"})
@@ -26,6 +28,7 @@ public class MonthlyReportController {
             List<MonthlyReport> reports = monthlyReportService.getAllReports();
             return ResponseEntity.ok(reports);
         } catch (Exception e) {
+            log.error("Error fetching all monthly reports", e);
             return ResponseEntity.status(500).build();
         }
     }
@@ -37,6 +40,7 @@ public class MonthlyReportController {
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
+            log.error("Error fetching monthly report by id: {}", id, e);
             return ResponseEntity.status(500).build();
         }
     }
@@ -47,6 +51,7 @@ public class MonthlyReportController {
             List<MonthlyReport> reports = monthlyReportService.getReportsByUserId(userId);
             return ResponseEntity.ok(reports);
         } catch (Exception e) {
+            log.error("Error fetching monthly reports for user: {}", userId, e);
             return ResponseEntity.status(500).build();
         }
     }
@@ -64,7 +69,11 @@ public class MonthlyReportController {
             MonthlyReport generatedReport = monthlyReportService.generateMonthlyReportFromTrainingLogs(userId, reportMonth);
             return ResponseEntity.ok(generatedReport);
         } catch (Exception e) {
-            return ResponseEntity.status(500).build();
+            log.error("Error generating monthly report for user: {} month: {}/{}", userId, year, month, e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("message", "Failed to generate monthly report");
+            return ResponseEntity.status(500).body(error);
         }
     }
 
@@ -159,6 +168,7 @@ public class MonthlyReportController {
             
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
+            log.error("Error fetching monthly statistics for user: {}", userId, e);
             return ResponseEntity.status(500).build();
         }
     }

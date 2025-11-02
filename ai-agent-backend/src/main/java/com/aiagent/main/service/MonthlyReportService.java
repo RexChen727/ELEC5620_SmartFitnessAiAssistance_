@@ -6,6 +6,7 @@ import com.aiagent.main.repository.MonthlyReportRepository;
 import com.aiagent.main.repository.TrainingLogRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class MonthlyReportService {
 
@@ -97,14 +99,19 @@ public class MonthlyReportService {
     /**
      * Generate monthly report from TrainingLog data for a specific month
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public MonthlyReport generateMonthlyReportFromTrainingLogs(Long userId, LocalDate reportMonth) {
         LocalDate monthStart = reportMonth.withDayOfMonth(1);
         LocalDate monthEnd = monthStart.plusMonths(1).minusDays(1);
 
+        log.info("Generating monthly report for user: {}, month: {} ({} to {})", userId, reportMonth, monthStart, monthEnd);
+        
         List<TrainingLog> logs = trainingLogRepository.findByUserIdAndDateRange(userId, monthStart, monthEnd);
+        
+        log.info("Found {} training logs for user {} in period {} to {}", logs.size(), userId, monthStart, monthEnd);
 
         if (logs.isEmpty()) {
+            log.info("No training logs found for user {} in month {}, returning empty report", userId, reportMonth);
             return createOrUpdateMonthlyReport(userId, reportMonth, 0, 0, 0, 0.0, 0, "[]", "[]");
         }
 
@@ -132,10 +139,15 @@ public class MonthlyReportService {
         double goalWorkouts = 16.0;
         double adherenceRate = Math.min(100.0, (totalSessions / goalWorkouts) * 100.0);
 
-        return createOrUpdateMonthlyReport(
+        MonthlyReport report = createOrUpdateMonthlyReport(
                 userId, reportMonth, totalSessions, totalMinutes, totalCalories,
                 adherenceRate, currentStreak, weeklyActivityData, topExercises
         );
+        
+        log.info("Successfully generated monthly report for user: {}, month: {}, totalSessions: {}, totalMinutes: {}, totalCalories: {}", 
+                userId, reportMonth, totalSessions, totalMinutes, totalCalories);
+        
+        return report;
     }
 
     private int calculateCurrentStreak(Long userId, LocalDate upToDate) {
